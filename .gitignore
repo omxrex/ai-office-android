@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.bak
+*.bak2
+*.bak3
+.env
+.DS_Store
+app/vo-config.json
+app/default-office-config.json.bak
+.work/
+node_modules/
+.pytest_cache/
+
+# Office data folders (plain-Python installs: VO_STATUS_DIR) and backups
+/vo-data/
+/vo-data-*/
+/data/
+*.tgz
+
+# OpenClaw and Hermes provider layer state (lives in the data folder; never in the repo)
+provider-layer.key
+app/provider-layer/data/
+*.pre-pl
+*.pre-hp
+next.db
+next.db-*
+
+# Logs
+*.log
+logs/

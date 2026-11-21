@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#070b13">
+    <title>Model Settings - My Virtual Office</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <script>try{document.documentElement.dataset.uiTheme=localStorage.getItem('vo-ui-theme')==='light'?'light':'dark';let p=localStorage.getItem('vo-ui-preset')||'classic';document.documentElement.dataset.uiPreset=/^(classic|retro|cyberpunk|gameboy|custom)$/.test(p)?p:'classic'}catch(e){document.documentElement.dataset.uiTheme='dark';document.documentElement.dataset.uiPreset='classic'}</script>
+    <script src="vo-auth.js"></script>
+    <link rel="stylesheet" href="ui-tokens.css?v=20261101-v08">
+    <style>
+        :root { --bg:#0d0d1a; --surface:#141428; --border:#2a2a4a; --gold:#ffd700; --text:#d8d8e8; --text-dim:#8f91aa; --green:#4caf50; --red:#f44336; --blue:#2196f3; --purple:#8b5cf6; }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { background:var(--bg); color:var(--text); font-family:'Press Start 2P', monospace; font-size:8px; line-height:1.6; padding:10px; }
+        h1 { font-size:12px; color:var(--gold); margin-bottom:12px; }
+        h2 { font-size:9px; color:var(--gold); margin:14px 0 8px; }
+        h3 { font-size:8px; color:var(--gold); margin:10px 0 6px; }
+        p { margin:5px 0; }
+        .back-btn { display:inline-block; padding:6px 12px; background:var(--surface); color:var(--gold); border:1px solid var(--border); border-radius:4px; cursor:pointer; font-family:inherit; font-size:7px; margin-bottom:10px; text-decoration:none; }
+        .tabs { display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap; }
+        .tab { padding:6px 10px; background:var(--surface); border:1px solid var(--border); border-radius:4px 4px 0 0; cursor:pointer; font-family:inherit; font-size:7px; color:var(--text-dim); }
+        .tab.active { background:var(--border); color:var(--gold); }
+        .panel { display:none; }
+        .panel.active { display:block; }
+        .card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px; margin-bottom:10px; }
+        .provider-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px; }
+        .provider-header > * { min-width:0; }
+        .provider-name { font-size:9px; color:var(--gold); overflow-wrap:anywhere; }
+        .provider-current { color:var(--text-dim); text-align:right; max-width:46%; overflow-wrap:anywhere; word-break:break-word; }
+        .muted { color:var(--text-dim); }
+        .ok { color:var(--green); }
+        .err { color:var(--red); }
+        .tag { display:inline-block; padding:2px 5px; border:1px solid var(--border); border-radius:3px; margin:2px; color:var(--text-dim); }
+        input, select, textarea { font-family:'Press Start 2P', monospace; font-size:7px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:5px 6px; width:100%; }
+        textarea { min-height:64px; resize:vertical; }
+        .row { display:flex; gap:6px; align-items:center; margin:6px 0; flex-wrap:wrap; }
+        .row label { min-width:102px; color:var(--text-dim); flex-shrink:0; }
+        .row input, .row select, .row textarea { flex:1; min-width:190px; }
+        .btn { padding:5px 10px; font-family:inherit; font-size:7px; border:none; border-radius:3px; cursor:pointer; white-space:nowrap; margin:2px 2px 2px 0; }
+        .btn-gold { background:var(--gold); color:#000; }
+        .btn-green { background:var(--green); color:#fff; }
+        .btn-red { background:var(--red); color:#fff; }
+        .btn-blue { background:var(--blue); color:#fff; }
+        .btn-purple { background:var(--purple); color:#fff; }
+        .model-list { max-height:280px; overflow-y:auto; margin:6px 0; border:1px solid var(--border); border-radius:4px; }
+        .model-item { padding:4px 6px; font-size:7px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; gap:8px; align-items:center; }
+        .model-item span { min-width:0; overflow-wrap:anywhere; word-break:break-word; }
+        .model-item:last-child { border-bottom:none; }
+        .auth-help .model-item { align-items:flex-start; }
+        .auth-help .model-item span:first-child { color:var(--gold); }
+        .mvw-confirm-overlay { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:18px; background:rgba(5,5,12,.78); }
+        .mvw-confirm-overlay[hidden] { display:none; }
+        .mvw-confirm-dialog { width:min(460px, 100%); background:var(--surface); border:1px solid var(--gold); border-radius:6px; padding:14px; box-shadow:0 20px 70px rgba(0,0,0,.55); }
+        .mvw-confirm-title { color:var(--gold); font-size:9px; margin-bottom:8px; }
+        .mvw-confirm-message { color:var(--text); margin-bottom:12px; overflow-wrap:anywhere; }
+        .mvw-confirm-actions { display:flex; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+        .status-msg { font-size:7px; margin:6px 0; min-height:12px; }
+        .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:10px; }
+        .wide { grid-column:1 / -1; }
+        .checkbox-row { display:flex; align-items:center; gap:6px; color:var(--text-dim); margin:6px 0; }
+        .checkbox-row input { width:auto; min-width:0; }
+        .provider-tools { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+        .model-editor { font-family:monospace; font-size:11px; line-height:1.35; min-height:92px; }
+        .context-settings { margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }
+        .context-row { display:grid; grid-template-columns:minmax(150px, 1.4fr) minmax(180px, 1fr) minmax(120px, .8fr); gap:6px; align-items:center; padding:6px; border:1px solid var(--border); border-radius:4px; margin:5px 0; }
+        .context-model { min-width:0; overflow-wrap:anywhere; }
+        .context-model small { display:block; margin-top:4px; color:var(--text-dim); line-height:1.35; }
+        .context-row select, .context-row input { min-width:0; }
+        .context-row input:disabled { opacity:.65; cursor:not-allowed; }
+        @media (max-width:700px) {
+            .ui-standalone .models-header .back-btn { display:inline-flex; align-items:center; min-height:44px; }
+            .provider-header { flex-direction:column; }
+            .provider-current { max-width:100%; text-align:left; }
+            .context-row { grid-template-columns:1fr; }
+        }
+        code { color:var(--gold); overflow-wrap:anywhere; }
+        ::-webkit-scrollbar { width:5px; }
+        ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    </style>
+    <link rel="stylesheet" href="ui-standalone.css?v=20260722-3">
+    <link rel="stylesheet" href="ui-themes.css?v=20260805-workspace-chat-1">
+    <link rel="stylesheet" href="v08-panels.css?v=20261101-v08">
+    <link rel="stylesheet" href="models-v10.css?v=20261103-v10">
+</head>
+<body class="ui-standalone models-page">
+    <div class="models-header">
+        <a class="back-btn" href="/"><span aria-hidden="true">←</span> Office</a>
+        <a class="back-btn" href="/providers.html">Agent Providers</a>
+        <h1>Models &amp; providers</h1>
+        <button type="button" class="ui-theme-toggle" data-ui-theme-toggle>Light</button>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Model settings sections">
+        <button type="button" class="tab active" role="tab" id="tab-openclaw" data-tab="openclaw" aria-selected="true" aria-controls="panel-openclaw">OpenClaw</button>
+        <button type="button" class="tab" role="tab" id="tab-hermes" data-tab="hermes" aria-selected="false" aria-controls="panel-hermes" tabindex="-1">Hermes</button>
+        <button type="button" class="tab" role="tab" id="tab-codex" data-tab="codex" aria-selected="false" aria-controls="panel-codex" tabindex="-1">Codex</button>
+        <button type="button" class="tab" role="tab" id="tab-claude-code" data-tab="claude-code" aria-selected="false" aria-controls="panel-claude-code" tabindex="-1">Claude Code</button>
+        <button type="button" class="tab" role="tab" id="tab-setup" data-tab="setup" aria-selected="false" aria-controls="panel-setup" tabindex="-1">Native setup</button>
+    </div>
+    <div id="panel-openclaw" class="panel active" role="tabpanel" aria-labelledby="tab-openclaw"><div id="openclaw-models" aria-live="polite"></div></div>
+    <div id="panel-hermes" class="panel" role="tabpanel" aria-labelledby="tab-hermes"><div id="hermes-models"></div></div>
+    <div id="panel-codex" class="panel" role="tabpanel" aria-labelledby="tab-codex"><div id="codex-models"></div></div>
+    <div id="panel-claude-code" class="panel" role="tabpanel" aria-labelledby="tab-claude-code"><div id="claude-code-models"></div></div>
+    <div id="panel-setup" class="panel" role="tabpanel" aria-labelledby="tab-setup"><div id="native-setup"></div></div>
+    <div id="mvw-confirm-overlay" class="mvw-confirm-overlay" hidden>
+        <div class="mvw-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="mvw-confirm-title">
+            <div id="mvw-confirm-title" class="mvw-confirm-title">Confirm Action</div>
+            <div id="mvw-confirm-message" class="mvw-confirm-message"></div>
+            <div class="mvw-confirm-actions">
+                <button id="mvw-confirm-cancel" class="btn" type="button">Cancel</button>
+                <button id="mvw-confirm-ok" class="btn btn-red" type="button">Continue</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function () {
+'use strict';
+let nativeData = null;
+let pendingScrollRestore = null;
+let activeConfirmResolve = null;
+let confirmOpener = null;
+let loadSeq = 0;
+const PANEL_ROOTS = { openclaw: 'openclaw-models', hermes: 'hermes-models', codex: 'codex-models', 'claude-code': 'claude-code-models', setup: 'native-setup' };
+const CLAUDE_PERMISSION_MODES = [
+    ['acceptEdits', 'Accept edits'],
+    ['default', 'Default (ask)'],
+    ['plan', 'Plan only'],
+    ['bypassPermissions', 'Bypass permissions'],
+];
+const CODEX_SANDBOX = [['workspace-write', 'workspace-write'], ['read-only', 'read-only'], ['danger-full-access', 'danger-full-access']];
+const CODEX_APPROVAL = [['never', 'never'], ['on-request', 'on-request'], ['on-failure', 'on-failure'], ['untrusted', 'untrusted']];
+
+function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function val(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+}
+
+function checked(id) {
+    return !!document.getElementById(id)?.checked;
+}
+
+function setStatus(id, data, okText = 'Saved') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'status-msg ' + (data.ok ? 'ok' : 'err');
+    el.setAttribute('role', data.ok ? 'status' : 'alert');
+    el.textContent = data.ok ? okText : (data.error || 'Failed');
+}
+
+function setPending(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'status-msg muted';
+    el.removeAttribute('role');
+    el.textContent = text;
+}
+
+// Options for a select; a current value the list does not know is kept as "(current)".
+function selectOptions(pairs, current) {
+    const known = pairs.some(([value]) => value === current);
+    const rows = pairs.map(([value, label]) => `<option value="${esc(value)}" ${value === current ? 'selected' : ''}>${esc(label)}</option>`);
+    if (current && !known) rows.unshift(`<option value="${esc(current)}" selected>${esc(current)} (current)</option>`);
+    return rows.join('');
+}
+
+function restoreScrollSoon(state) {
+    if (!state) return;
+    requestAnimationFrame(() => {
+        window.scrollTo(state.x || 0, state.y || 0);
+        requestAnimationFrame(() => window.scrollTo(state.x || 0, state.y || 0));
+    });
+}
+
+function refreshNativeSoon(delay = 800) {
+    const scrollState = { x: window.scrollX || 0, y: window.scrollY || 0 };
+    setTimeout(() => reloadNative({ preserveScroll: scrollState, quiet: true }), delay);
+}
+
+function closeConfirmDialog(result) {
+    const overlay = document.getElementById('mvw-confirm-overlay');
+    if (overlay) overlay.hidden = true;
+    const resolve = activeConfirmResolve;
+    activeConfirmResolve = null;
+    if (confirmOpener && confirmOpener.isConnected) confirmOpener.focus({ preventScroll: true });
+    confirmOpener = null;
+    if (resolve) resolve(Boolean(result));
+}
+
+function confirmAction(message, options = {}) {
+    const overlay = document.getElementById('mvw-confirm-overlay');
+    const titleEl = document.getElementById('mvw-confirm-title');
+    const messageEl = document.getElementById('mvw-confirm-message');
+    const cancelEl = document.getElementById('mvw-confirm-cancel');
+    const okEl = document.getElementById('mvw-confirm-ok');
+    if (!overlay || !titleEl || !messageEl || !cancelEl || !okEl) {
+        return Promise.resolve(false);
+    }
+    if (activeConfirmResolve) closeConfirmDialog(false);
+    confirmOpener = document.activeElement;
+    titleEl.textContent = options.title || 'Confirm Action';
+    messageEl.textContent = message || 'Continue?';
+    cancelEl.textContent = options.cancelText || 'Cancel';
+    okEl.textContent = options.okText || 'Continue';
+    okEl.className = 'btn ' + (options.danger === false ? 'btn-green' : 'btn-red');
+    overlay.hidden = false;
+    cancelEl.focus({ preventScroll:true });
+    return new Promise(resolve => {
+        activeConfirmResolve = resolve;
+    });
+}
+
+document.getElementById('mvw-confirm-cancel')?.addEventListener('click', () => closeConfirmDialog(false));
+document.getElementById('mvw-confirm-ok')?.addEventListener('click', () => closeConfirmDialog(true));
+document.getElementById('mvw-confirm-overlay')?.addEventListener('click', event => {
+    if (event.target === event.currentTarget) closeConfirmDialog(false);
+});
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && activeConfirmResolve) closeConfirmDialog(false);
+});
+
+// ---------- tabs (buttons, arrow keys, #hash deep links) ----------
+function tabButtons() { return Array.from(document.querySelectorAll('.tabs .tab')); }
+
+function showTab(name, opts = {}) {
+    if (!PANEL_ROOTS[name]) name = 'openclaw';
+    tabButtons().forEach(t => {
+        const on = t.dataset.tab === name;
+        t.classList.toggle('active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        if (on && opts.focus) t.focus();
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+    if (opts.updateHash !== false && location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+}
+
+document.querySelector('.tabs')?.addEventListener('click', event => {
+    const tab = event.target.closest('.tab');
+    if (tab) showTab(tab.dataset.tab);
+});
+document.querySelector('.tabs')?.addEventListener('keydown', event => {
+    const tabs = tabButtons();
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    let next = -1;
+    if (event.key === 'ArrowRight') next = (i + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft') next = (i - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = tabs.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    showTab(tabs[next].dataset.tab, { focus: true });
+});
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1), { updateHash: false }));
+
+// ---------- loading, errors ----------
+function stateCard(kind, title, body, opts = {}) {
+    // Pixel icons (the page has no sprite): warn / info, never emoji (UI-07).
+    const icon = kind === 'error' ? '<svg viewBox="0 0 10 10" width="28" height="28" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M4 0h2v1h-2zM4 1h2v1h-2zM3 2h4v1h-4zM3 3h1v1h-1zM6 3h1v1h-1zM4 3h2v3h-2zM2 4h1v2h-1zM7 4h1v2h-1zM1 6h1v2h-1zM8 6h1v2h-1zM4 7h2v1h-2zM0 8h1v1h-1zM9 8h1v1h-1zM0 9h10v1h-10z"/></svg>' : kind === 'loading' ? '' : '<svg viewBox="0 0 10 10" width="28" height="28" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><path d="M2 0h6v1h-6zM1 1h1v1h-1zM8 1h1v1h-1zM0 2h1v6h-1zM9 2h1v6h-1zM1 8h1v1h-1zM8 8h1v1h-1zM2 9h6v1h-6zM4 2h2v1h-2zM3 4h3v1h-3zM4 5h2v2h-2zM3 7h4v1h-4z"/></svg>';
+    return `<section class="vo-state-card is-${esc(kind)}" role="${kind === 'error' ? 'alert' : 'status'}">
+        ${kind === 'loading' ? '<div class="vo-state-spinner" aria-hidden="true"></div>' : `<div class="vo-state-icon" aria-hidden="true">${icon}</div>`}
+        <h2 class="vo-state-title">${esc(title)}</h2>
+        ${body ? `<p class="vo-state-body">${esc(body)}</p>` : ''}
+        ${opts.raw ? `<details class="vo-state-details"><summary>Technical details</summary><code>${esc(opts.raw)}</code></details>` : ''}
+        ${opts.retry ? '<div class="vo-state-actions"><button type="button" class="vo-state-btn is-primary" data-action="reload">↻ Retry</button></div>' : ''}
+    </section>`;
+}
+
+function setAllPanels(html) {
+    Object.values(PANEL_ROOTS).forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
+}
+
+class LoadError extends Error {
+    constructor(message, detail) { super(message); this.detail = detail || ''; }
+}
+
+async function fetchNativeModels() {
+    let res;
+    try {
+        res = await fetch('/api/native-models?agent=main', { cache:'no-store', credentials:'same-origin' });
+    } catch (e) {
+        throw new LoadError('Could not reach this office server. Check that Virtual Office is running.', e && e.message);
+    }
+    const text = await res.text().catch(() => '');
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+    if (!res.ok) {
+        const detail = data && (data.error?.message || data.error) ? String(data.error?.message || data.error) : text.slice(0, 400);
+        throw new LoadError(`The server could not read the model settings (error ${res.status}).`, detail || `HTTP ${res.status}`);
+    }
+    if (!data || typeof data !== 'object') {
+        throw new LoadError('The server sent an empty answer for the model settings.', `HTTP ${res.status}, ${text.length} bytes`);
+    }
+    return data;
+}
+
+// Unsaved edits survive a redraw (v0.10.1 saves): an action in one panel reloads every
+// panel, which used to reset what was typed in the others. Edited fields (by id) are put
+// back after each render; one that now shows the typed value (saved) is forgotten.
+const editedFields = new Map();
+function fieldState(el) {
+    return (el.type === 'checkbox' || el.type === 'radio') ? { checked: el.checked } : { value: el.value };
+}
+function rememberEdit(event) {
+    const el = event.target;
+    if (!el || !el.id || !/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
+    editedFields.set(el.id, fieldState(el));
+}
+document.addEventListener('input', rememberEdit, true);
+document.addEventListener('change', rememberEdit, true);
+function restoreEdits(root) {
+    if (!root) return;
+    editedFields.forEach((saved, id) => {
+        const el = document.getElementById(id);
+        if (!el || !root.contains(el)) return;
+        if (JSON.stringify(fieldState(el)) === JSON.stringify(saved)) { editedFields.delete(id); return; }
+        if ('checked' in saved) el.checked = saved.checked; else el.value = saved.value;
+    });
+}
+
+function renderSafely(name, fn) {
+    const root = document.getElementById(PANEL_ROOTS[name]);
+    try { fn(); restoreEdits(root); }
+    catch (e) {
+        console.error('[models] render failed:', name, e);
+        if (root) root.innerHTML = stateCard('error', 'This section could not be shown', 'Part of the settings came back in a shape this page does not understand.', { raw: e && e.message, retry: true });
+    }
+}
+
+async function loadNativeModels() {
+    const seq = ++loadSeq;
+    const data = await fetchNativeModels();
+    if (seq !== loadSeq) return;
+    nativeData = data;
+    renderSafely('openclaw', renderOpenClaw);
+    renderSafely('hermes', renderHermes);
+    loadAgentProviders();
+    renderSafely('codex', renderCodex);
+    renderSafely('claude-code', renderClaudeCode);
+    renderSafely('setup', renderSetup);
+    if (pendingScrollRestore) {
+        const state = pendingScrollRestore;
+        pendingScrollRestore = null;
+        restoreScrollSoon(state);
+    }
+}
+
+function reloadNative(options = {}) {
+    if (options.preserveScroll) pendingScrollRestore = options.preserveScroll;
+    if (!options.quiet || !nativeData) setAllPanels(stateCard('loading', 'Loading model settings…', ''));
+    return loadNativeModels().catch(e => {
+        if (options.quiet && nativeData) {
+            console.warn('[models] refresh failed:', e);
+            return;
+        }
+        setAllPanels(stateCard('error', 'Model settings could not be loaded', e.message || String(e), { raw: e.detail, retry: true }));
+    });
+}
+
+// ---------- rendering ----------
+function modelOptions(models, current, providerFilter) {
+    const filtered = (models || [])
+        .filter(m => !providerFilter || m.provider === providerFilter)
+        .filter(m => !m.missing)
+        .sort((a,b) => (String(a.provider) + a.name).localeCompare(String(b.provider) + b.name));
+    let found = false;
+    const rows = filtered.map(m => {
+        const label = (m.provider ? m.provider + '/' : '') + (m.name || m.id);
+        if (m.id === current) found = true;
+        return `<option value="${esc(m.id)}" ${m.id === current ? 'selected' : ''}>${esc(label)}</option>`;
+    });
+    if (current && !found) rows.unshift(`<option value="${esc(current)}" selected>${esc(current)} (current)</option>`);
+    return rows.join('');
+}
+
+function providerOptions(providers, current) {
+    return (providers || []).slice().sort().map(p => `<option value="${esc(p)}" ${p === current ? 'selected' : ''}>${esc(p)}</option>`).join('');
+}
+
+function authIssueText(row) {
+    const bits = [];
+    if ((row.missingManagedStatic || []).length) bits.push('missing ' + row.missingManagedStatic.length);
+    if ((row.divergentManagedStatic || []).length) bits.push('stale ' + row.divergentManagedStatic.length);
+    if ((row.extraStaticProfiles || []).length) bits.push('extra ' + row.extraStaticProfiles.length);
+    if (!bits.length) return 'static profiles synced';
+    return bits.join(' · ');
+}
+
+function profileListText(values) {
+    return (values || []).length ? values.join(', ') : 'none';
+}
+
+function syncedManagedProfileIds(row, profiles) {
+    const profileIds = profiles.map(p => p.id).filter(Boolean);
+    const missing = new Set(row.missingManagedStatic || []);
+    const stale = new Set(row.divergentManagedStatic || []);
+    return profileIds.filter(id => !missing.has(id) && !stale.has(id));
+}
+
+function renderOpenClawManagedAuth(oc) {
+    const managed = oc.managedAuth || {};
+    const rows = managed.agentRows || [];
+    const profiles = managed.managedStaticProfiles || [];
+    const driftRows = rows.filter(row => row.agent !== 'main' && !row.staticInSync);
+    return `<div class="card wide">
+        <div class="provider-header">
+            <div>
+                <div class="provider-name">Virtual Office Global Auth</div>
+                <div class="muted">Source <code>${esc(managed.sourceAgent || 'main')}</code> · ${profiles.length} managed static profile${profiles.length === 1 ? '' : 's'} · ${driftRows.length} agent${driftRows.length === 1 ? '' : 's'} need sync</div>
+            </div>
+            <button type="button" class="btn btn-blue" data-action="sync-static">Sync Static Profiles</button>
+        </div>
+        <details class="advanced">
+        <summary>Advanced: auth stores${driftRows.length ? ` <span class="advanced-badge">${driftRows.length} need a reset</span>` : ''}</summary>
+        <div class="model-list auth-help">
+            <div class="model-item"><span>Managed Static Profiles</span><span>uses <code>main</code> as the source for API-key and static-token profiles.</span></div>
+            <div class="model-item"><span>Sync Static Profiles</span><span>copies the managed static profiles from <code>main</code> into every known OpenClaw agent store.</span></div>
+            <div class="model-item"><span>Agent Auth Stores</span><span>shows whether each agent matches <code>main</code>, is missing a managed profile, has a stale copy, or has extra local static profiles.</span></div>
+            <div class="model-item"><span>Reset Static Overrides</span><span>for one agent, copies managed profiles from <code>main</code> and removes extra static profiles. OAuth profiles are left alone.</span></div>
+        </div>
+        <h3>Managed Static Profiles</h3>
+        ${profiles.length ? renderAuthTags(profiles) : '<div class="muted">No portable API-key or static-token profiles are managed from main yet.</div>'}
+        <p id="oc-managed-auth-status" class="status-msg"></p>
+        <h3>Agent Auth Stores</h3>
+        <div class="model-list">${rows.length ? rows.map(row => {
+            const issue = authIssueText(row);
+            const synced = row.agent === 'main'
+                ? profiles.map(p => p.id).filter(Boolean)
+                : syncedManagedProfileIds(row, profiles);
+            const detail = [
+                'synced: ' + profileListText(synced),
+                (row.missingManagedStatic || []).length ? 'missing: ' + row.missingManagedStatic.join(', ') : '',
+                (row.divergentManagedStatic || []).length ? 'stale: ' + row.divergentManagedStatic.join(', ') : '',
+                (row.extraStaticProfiles || []).length ? 'extra: ' + row.extraStaticProfiles.join(', ') : '',
+                (row.localOAuthProfiles || []).length ? 'local OAuth: ' + row.localOAuthProfiles.join(', ') : '',
+            ].filter(Boolean).join(' · ');
+            return `<div class="model-item">
+                <span>${esc(row.agent)} · ${esc(issue)}${detail ? `<br><small>${esc(detail)}</small>` : ''}</span>
+                <span>${row.agent === 'main' ? 'source' : (row.staticInSync ? 'ok' : `<button type="button" class="btn btn-danger-quiet" data-action="reset-overrides" data-agent="${esc(row.agent)}" title="Reset Static Overrides: copy the managed profiles from main and remove extra static profiles">Reset overrides</button>`)}</span>
+            </div>`;
+        }).join('') : '<div class="model-item"><span>No OpenClaw agent auth stores reported.</span><span></span></div>'}</div>
+        </details>
+    </div>`;
+}
+
+function modelsText(models) {
+    return (models || []).map(m => m.id || m.name || '').filter(Boolean).join('\n');
+}
+
+function formatContextLimit(value) {
+    const tokens = Number(value || 0);
+    return Number.isFinite(tokens) && tokens > 0 ? Math.round(tokens).toLocaleString() + ' tokens' : 'unknown';
+}
+
+function isOpenClawModelActive(providerId, modelId) {
+    const oc = nativeData?.openclaw || {};
+    const fullId = String(modelId || '').includes('/') ? String(modelId) : String(providerId || '') + '/' + String(modelId || '');
+    if (oc.defaultModel === fullId || oc.runtimeDefaultModel === fullId) return true;
+    return Object.values(oc.agents || {}).some(agent => agent?.model === fullId);
+}
+
+function renderOllamaContextControls(provider, providerIndex) {
+    if (!provider.isOllama) return '';
+    const models = provider.models || [];
+    if (!models.length) return '';
+    return `<div class="context-settings">
+        <h3>Ollama Context Limits</h3>
+        <p class="muted">Model default reads the advertised limit from Ollama. Manual override caps both OpenClaw's context budget and Ollama's runtime <code>num_ctx</code>.</p>
+        ${models.map((model, modelIndex) => {
+            const advertised = Number(model.advertisedContextWindow || 0);
+            const configured = Number(model.contextWindow || 0);
+            const manual = model.contextMode === 'manual';
+            const inputValue = manual ? Number(model.manualContextWindow || configured || 0) : Number(advertised || configured || 0);
+            const active = isOpenClawModelActive(provider.provider, model.id);
+            const autoLabel = advertised ? `Model default (${advertised.toLocaleString()})` : 'Model default (unavailable)';
+            const detail = advertised
+                ? `Advertised: ${formatContextLimit(advertised)} · Configured: ${formatContextLimit(configured)}`
+                : `Configured: ${formatContextLimit(configured)}${model.contextDetectionError ? ' · Detection: ' + model.contextDetectionError : ''}`;
+            return `<div class="context-row">
+                <div class="context-model"><span>${esc(model.id)}${active ? ' · ACTIVE' : ''}</span><small>${esc(detail)}</small></div>
+                <select id="oc-context-mode-${providerIndex}-${modelIndex}" data-change="context-mode" data-provider-index="${providerIndex}" data-model-index="${modelIndex}" aria-label="Context mode for ${esc(model.id)}">
+                    <option value="auto" ${manual ? '' : 'selected'} ${!advertised && manual ? 'disabled' : ''}>${esc(autoLabel)}</option>
+                    <option value="manual" ${manual ? 'selected' : ''}>Manual override</option>
+                </select>
+                <input id="oc-context-value-${providerIndex}-${modelIndex}" type="number" min="1024" step="1024" ${advertised ? `max="${esc(advertised)}"` : ''} value="${esc(inputValue || '')}" ${manual ? '' : 'disabled'} aria-label="Context limit for ${esc(model.id)}">
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+
+function toggleOllamaContextOverride(providerIndex, modelIndex) {
+    const mode = val(`oc-context-mode-${providerIndex}-${modelIndex}`);
+    const input = document.getElementById(`oc-context-value-${providerIndex}-${modelIndex}`);
+    if (!input) return;
+    input.disabled = mode !== 'manual';
+    if (mode === 'manual' && !Number(input.value || 0)) {
+        const provider = ((nativeData?.openclaw || {}).localProviders || [])[providerIndex] || {};
+        const model = (provider.models || [])[modelIndex] || {};
+        input.value = Number(model.contextWindow || model.advertisedContextWindow || 0) || '';
+    }
+}
+
+// Keeps each existing model's display name (CH-34); new ids get their id as name.
+function openClawProviderModelsPayload(index) {
+    const provider = ((nativeData?.openclaw || {}).localProviders || [])[index] || {};
+    const rawModelIds = val('oc-local-provider-models-' + index).replace(/,/g, '\n').split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+    const existingIndex = new Map((provider.models || []).map((model, modelIndex) => [model.id, modelIndex]));
+    return [...new Set(rawModelIds)].map(modelId => {
+        const modelIndex = existingIndex.get(modelId);
+        const model = modelIndex === undefined ? {} : (provider.models[modelIndex] || {});
+        const payload = { id:modelId, name:model.name || modelId };
+        if (!provider.isOllama) return payload;
+        if (modelIndex === undefined) return Object.assign(payload, { contextMode:'auto' });
+        const mode = val(`oc-context-mode-${index}-${modelIndex}`) === 'manual' ? 'manual' : 'auto';
+        payload.contextMode = mode;
+        if (mode === 'manual') {
+            const contextWindow = Number(val(`oc-context-value-${index}-${modelIndex}`));
+            if (!Number.isInteger(contextWindow) || contextWindow < 1024) {
+                throw new Error(`Enter a manual context of at least 1,024 tokens for ${modelId}.`);
+            }
+            payload.contextWindow = contextWindow;
+        }
+        return payload;
+    });
+}
+
+function localProviderSummary(provider) {
+    const bits = [];
+    if (provider.baseUrl) bits.push(provider.baseUrl);
+    if (provider.api) bits.push(provider.api);
+    if (provider.timeoutSeconds) bits.push('timeout ' + provider.timeoutSeconds + 's');
+    if (provider.apiKeyConfigured) bits.push('API key saved');
+    return bits.join(' · ') || 'No extra settings';
+}
+
+function renderOpenClawLocalProviders(oc) {
+    const providers = oc.localProviders || [];
+    if (!providers.length) {
+        return `<div class="card wide">
+            <div class="provider-name">Installed Local Providers</div>
+            <p class="muted">No local/custom OpenClaw providers are configured yet. Add Ollama, LM Studio, or an OpenAI-compatible endpoint below.</p>
+        </div>`;
+    }
+    return `<div class="card wide">
+        <div class="provider-header">
+            <div><div class="provider-name">Installed Local Providers</div><div class="muted">${providers.length} configured provider${providers.length === 1 ? '' : 's'} from <code>models.providers</code></div></div>
+        </div>
+        <div class="grid">${providers.map((provider, idx) => `
+            <div class="card">
+                <div class="provider-header">
+                    <div><div class="provider-name">${esc(provider.provider)}</div><div class="muted">${esc(localProviderSummary(provider))}</div></div>
+                    <div class="provider-tools">
+                        <button type="button" class="btn btn-green" data-action="save-local-provider" data-index="${idx}">Save</button>
+                        <button type="button" class="btn btn-red" data-action="delete-local-provider" data-index="${idx}">Delete</button>
+                    </div>
+                </div>
+                <div class="row"><label for="oc-local-provider-id-${idx}">Provider ID</label><input id="oc-local-provider-id-${idx}" value="${esc(provider.provider)}" readonly title="Delete and re-add the provider to rename it"></div>
+                <div class="row"><label for="oc-local-provider-url-${idx}">Base URL</label><input id="oc-local-provider-url-${idx}" value="${esc(provider.baseUrl || '')}" placeholder="http://localhost:1234/v1"></div>
+                <div class="row"><label for="oc-local-provider-api-${idx}">API</label><select id="oc-local-provider-api-${idx}">
+                    <option value="openai-completions" ${(provider.api || '') !== 'ollama' ? 'selected' : ''}>OpenAI-compatible</option>
+                    <option value="ollama" ${(provider.api || '') === 'ollama' ? 'selected' : ''}>Ollama native</option>
+                </select></div>
+                <div class="row"><label for="oc-local-provider-timeout-${idx}">Timeout</label><input id="oc-local-provider-timeout-${idx}" type="number" min="1" value="${esc(provider.timeoutSeconds || '')}" placeholder="300"></div>
+                <div class="row"><label for="oc-local-provider-key-${idx}">API Key</label><input id="oc-local-provider-key-${idx}" type="password" autocomplete="off" placeholder="${provider.apiKeyConfigured ? 'Saved. Leave blank to keep it' : 'optional'}"></div>
+                <div class="row"><label for="oc-local-provider-models-${idx}">Models</label><textarea class="model-editor" id="oc-local-provider-models-${idx}" placeholder="one model per line">${esc(modelsText(provider.models))}</textarea></div>
+                <p class="muted">Add or remove models by editing this list, then Save. Display names are kept.</p>
+                ${renderOllamaContextControls(provider, idx)}
+                <p id="oc-local-provider-status-${idx}" class="status-msg"></p>
+            </div>
+        `).join('')}</div>
+    </div>`;
+}
+
+function renderOpenClawCloudProviders(oc) {
+    const providers = oc.cloudProviders || [];
+    if (!providers.length) {
+        return `<div class="card wide">
+            <div class="provider-name">Cloud Service Providers</div>
+            <p class="muted">No cloud provider auth profiles or configured cloud models were reported.</p>
+        </div>`;
+    }
+    return `<div class="card wide">
+        <div class="provider-header">
+            <div><div class="provider-name">Cloud Service Providers</div><div class="muted">${providers.length} configured cloud provider${providers.length === 1 ? '' : 's'} with API/OAuth/subscription auth state</div></div>
+        </div>
+        <div class="grid">${providers.map((provider, idx) => {
+            const profiles = provider.authProfiles || [];
+            return `<div class="card">
+                <div class="provider-header">
+                    <div><div class="provider-name">${esc(provider.provider)}</div><div class="muted">cloud service · ${(provider.models || []).length} configured model${(provider.models || []).length === 1 ? '' : 's'}</div></div>
+                    <div class="provider-current">${profiles.length ? esc((provider.authTypes || []).join(', ') || 'auth configured') : 'no auth profile'}</div>
+                </div>
+                <h3>Auth</h3>
+                ${profiles.length ? renderAuthTags(profiles) : '<div class="muted">No API key, OAuth, or subscription profile reported for this provider.</div>'}
+                <div class="row"><label for="oc-cloud-profile-${idx}">Profile ID</label><input id="oc-cloud-profile-${idx}" placeholder="${esc(provider.provider)}:manual"></div>
+                <div class="row"><label for="oc-cloud-key-${idx}">API Key</label><input id="oc-cloud-key-${idx}" type="password" autocomplete="off" placeholder="paste API key"></div>
+                <button type="button" class="btn btn-green" data-action="save-cloud-key" data-index="${idx}">Save API Key</button>
+                ${profiles.length ? `<div class="row"><label for="oc-cloud-delete-${idx}">Delete Profile</label><select id="oc-cloud-delete-${idx}">${profiles.map(p => `<option value="${esc(p.id || p.profileId || '')}">${esc(p.id || p.profileId || p.label || '')}</option>`).join('')}</select></div><button type="button" class="btn btn-red" data-action="delete-cloud-key" data-index="${idx}">Delete Auth Profile</button>` : ''}
+                <p id="oc-cloud-status-${idx}" class="status-msg"></p>
+                <h3>Models</h3>
+                <div class="model-list">${(provider.models || []).length ? provider.models.map(m => `<div class="model-item"><span>${esc(m.id)}</span><span>${esc(m.source || 'configured')}</span></div>`).join('') : '<div class="model-item"><span>No configured models reported.</span><span></span></div>'}</div>
+            </div>`;
+        }).join('')}</div>
+    </div>`;
+}
+
+function renderOpenClaw() {
+    const root = document.getElementById('openclaw-models');
+    const oc = nativeData.openclaw || {};
+    if (!oc.ok) {
+        root.innerHTML = stateCard('error', 'OpenClaw models could not be read', 'Check that the OpenClaw home folder is set in Settings and that its config file is readable.', { raw: oc.error || 'unknown error', retry: true });
+        return;
+    }
+    const agents = Object.values(oc.agents || {}).filter(a => a && a.id).sort((a,b) => String(a.id).localeCompare(String(b.id)));
+    const byProvider = {};
+    const localProviderIds = (oc.localProviders || []).map(p => p.provider).filter(Boolean);
+    for (const m of oc.models || []) (byProvider[m.provider || 'unknown'] ||= []).push(m);
+    let html = `<div class="grid">
+        <div class="card wide">
+            <div class="provider-header">
+                <div><div class="provider-name">OpenClaw Available Models</div><div class="muted">${(oc.models||[]).length} models · ${(oc.providers||[]).length} providers · default <code>${esc(oc.defaultModel || 'none')}</code></div></div>
+                <button type="button" class="btn btn-blue" data-action="reload">Refresh</button>
+            </div>
+            <h3>Auth Profiles</h3>${renderAuthTags(oc.authProfiles)}
+        </div>
+        ${renderOpenClawManagedAuth(oc)}
+        ${renderOpenClawCloudProviders(oc)}
+        ${renderOpenClawLocalProviders(oc)}
+        <div class="card">
+            <div class="provider-name">Add Local or Custom Provider</div>
+            <p class="muted">Saving an existing Provider ID updates that provider's model list.</p>
+            <div class="row"><label for="oc-provider-preset">Preset</label><select id="oc-provider-preset" data-change="provider-preset"><option value="custom">Custom OpenAI-compatible</option><option value="ollama">Ollama</option><option value="lmstudio">LM Studio</option></select></div>
+            <div class="row"><label for="oc-provider-id">Provider ID</label><input id="oc-provider-id" value="custom"></div>
+            <div class="row"><label for="oc-provider-url">Base URL</label><input id="oc-provider-url" placeholder="http://localhost:1234/v1"></div>
+            <div class="row"><label for="oc-provider-api">API</label><select id="oc-provider-api"><option value="openai-completions">OpenAI-compatible</option><option value="ollama">Ollama native</option></select></div>
+            <div class="row"><label for="oc-provider-key">API Key</label><input id="oc-provider-key" type="password" autocomplete="off" placeholder="optional"></div>
+            <div class="row"><label for="oc-provider-models">Models</label><textarea id="oc-provider-models" placeholder="one model per line"></textarea></div>
+            <button type="button" class="btn btn-green" data-action="save-provider">Save Provider</button>
+            <p id="oc-provider-status" class="status-msg"></p>
+        </div>
+        <div class="card">
+            <div class="provider-name">Delete Local Provider</div>
+            ${localProviderIds.length ? `<div class="row"><label for="oc-delete-provider">Provider</label><select id="oc-delete-provider">${providerOptions(localProviderIds, '')}</select></div>
+            <button type="button" class="btn btn-red" data-action="delete-provider">Delete Local Provider</button>` : '<p class="muted">No local providers to delete.</p>'}
+            <p id="oc-delete-status" class="status-msg"></p>
+        </div>
+        <div class="card wide">
+            <div class="provider-name">Assign OpenClaw Agent Models</div>
+            ${agents.length ? '' : '<p class="muted">No OpenClaw agents were reported.</p>'}
+            <div class="grid">${agents.map((agent, idx) => {
+                const model = agent.model || '';
+                return `<div class="card">
+                    <div class="provider-header"><div class="provider-name">${esc(agent.name || agent.id)}</div><div class="muted">${esc(model || 'default (' + (oc.defaultModel || 'none') + ')')}</div></div>
+                    <div class="row"><label for="oc-agent-${idx}">Model</label><select id="oc-agent-${idx}"><option value="" ${model ? '' : 'selected'}>Default (${esc(oc.defaultModel || 'none')})</option>${modelOptions(oc.models, model)}</select></div>
+                    <button type="button" class="btn btn-green" data-action="set-agent-model" data-agent="${esc(agent.id)}" data-index="${idx}">Apply</button>
+                    <p id="oc-agent-status-${idx}" class="status-msg"></p>
+                </div>`;
+            }).join('')}</div>
+        </div>`;
+    for (const provider of Object.keys(byProvider).sort()) {
+        const models = byProvider[provider].sort((a,b) => String(a.id).localeCompare(String(b.id)));
+        html += `<div class="card"><div class="provider-header"><div class="provider-name">${esc(provider)}</div><div class="muted">${models.length}</div></div><div class="model-list">`;
+        for (const m of models) {
+            const context = Number(m.contextWindow || 0) > 0 ? ` · ctx ${Number(m.contextWindow).toLocaleString()}` : '';
+            html += `<div class="model-item"><span>${esc(m.id)}${esc(context)}</span><span class="${m.available ? 'ok' : 'err'}">${m.available ? (m.local ? 'local' : 'available') : 'missing'}</span></div>`;
+        }
+        html += '</div></div>';
+    }
+    html += '</div>';
+    root.innerHTML = html;
+}
+
+function renderAuthTags(authProfiles) {
+    if (!authProfiles || !authProfiles.length) return '<div class="muted">No auth profiles reported.</div>';
+    return authProfiles.map(p => `<span class="tag">${esc(p.id || p.profileId || p.label)} · ${esc(p.provider)} · ${esc(p.type || p.mode || 'profile')}</span>`).join('');
+}
+
+// Agent Providers rows (GET /api/agent-providers): null until read or when the read fails.
+let apRows = null;
+
+async function loadAgentProviders() {
+    try {
+        const res = await fetch('/api/agent-providers', { cache:'no-store' });
+        const data = res.ok ? await res.json() : null;
+        apRows = data && Array.isArray(data.providers) ? data.providers.filter(p => p && p.id) : null;
+    } catch (e) { apRows = null; }
+    if (nativeData) renderSafely('hermes', renderHermes);
+}
+
+const AP_STATE_WORDS = { connected:'Connected', connecting:'Connecting...', checking:'Checking...', pairing:'Waiting for approval', error:'Needs attention', offline:'Offline' };
+const apStateWord = p => p.enabled === false ? 'Switched off' : (AP_STATE_WORDS[(p.status || {}).state] || 'Offline');
+const apManageUrl = (p, tab) => '/providers.html?provider=hermes&connection=' + encodeURIComponent(p.id) + (tab ? '&tab=' + tab : '');
+
+// Full access: a "Change in Agent Providers" button; older API server rows point to the switch first.
+function hermesApFooter(p) {
+    if (!p) return '';
+    if (p.access !== 'full') return '<p class="muted">Chat only: change this connection\'s models in Hermes itself.</p>';
+    if (p.transport === 'api') {
+        return `<p class="muted">Older API server: switch it to the full Hermes connection to change models from the office.</p>
+            <div class="card-actions"><button type="button" class="btn btn-blue" data-action="open-ap" data-href="${esc(apManageUrl(p, ''))}">Open in Agent Providers</button></div>`;
+    }
+    return `<div class="card-actions"><button type="button" class="btn btn-blue" data-action="open-ap" data-href="${esc(apManageUrl(p, 'models'))}">Change in Agent Providers</button></div>`;
+}
+
+function renderHermes() {
+    const root = document.getElementById('hermes-models');
+    const hermes = nativeData.hermes || {};
+    const profiles = hermes.profiles || [];
+    const apHermes = (apRows || []).filter(p => p.kind === 'hermes');
+    const serve = apHermes.filter(p => p.transport !== 'api');
+    const count = profiles.length + serve.length;
+    let html = `<div class="grid">
+        <div class="card wide">
+            <div class="provider-header">
+                <div><div class="provider-name">Hermes Native Gateways</div><div class="muted">Read-only state from ${count} configured native Hermes connection${count === 1 ? '' : 's'}.</div></div>
+                <button type="button" class="btn btn-blue" data-action="reload">Refresh</button>
+            </div>
+            <p class="muted">${esc(hermes.managementMessage || 'Manage models, providers, credentials, and profiles in Hermes. Virtual Office only connects to the native API.')}</p>
+        </div>
+        `;
+    for (const p of serve) {
+        const agents = (p.agents || []).filter(a => a && !a.hidden).length;
+        const version = (p.status || {}).version;
+        html += `<div class="card" data-ap-id="${esc(p.id)}">
+            <div class="provider-header"><div><div class="provider-name">${esc(p.name || p.id)}</div><div class="muted">${esc((p.fields || {}).url || '')}</div></div><div class="provider-current ${(p.status || {}).state === 'connected' && p.enabled !== false ? 'ok' : 'err'}">${esc(apStateWord(p))}</div></div>
+            <div class="row"><span class="row-label">Connection</span><div>${esc('Hermes' + (version ? ' ' + version : '') + ' · ' + countText(agents, 'agent'))}</div></div>
+            ${hermesApFooter(p)}
+        </div>`;
+    }
+    for (const profile of profiles) {
+        const ap = apHermes.find(p => p.transport === 'api' && p.id === profile.id);
+        html += `<div class="card">
+            <div class="provider-header"><div><div class="provider-name">${esc(profile.name || profile.id)}</div><div class="muted">${esc(profile.apiUrl || '')}</div></div><div class="provider-current ${profile.available ? 'ok' : 'err'}">${profile.available ? 'Connected' : 'Unavailable'}</div></div>
+            <div class="row"><span class="row-label">Advertised model</span><div>${esc(profile.model || 'not advertised')}</div></div>
+            ${profile.error ? `<p class="status-msg err">${esc(profile.error)}</p>` : ''}
+            ${hermesApFooter(ap)}
+        </div>`;
+    }
+    if (!count) {
+        html += `<div class="card wide"><div class="provider-name">No Hermes connections configured</div><p class="muted">Connect Hermes in Agent Providers.</p>
+            <div class="card-actions"><button type="button" class="btn btn-blue" data-action="open-ap" data-href="/providers.html?provider=hermes">Open Agent Providers</button></div></div>`;
+    }
+    html += '</div>';
+    root.innerHTML = html;
+}
+
+function renderCodex() {
+    const root = document.getElementById('codex-models');
+    const codex = nativeData.codex || {};
+    root.innerHTML = `<div class="grid">
+        <div class="card wide"><div class="provider-name">Codex CLI Agent Integration</div>
+            <p class="muted">Virtual Office can discover and create Codex-backed agents through the native Codex CLI. Chat uses <code>codex app-server --stdio</code> when enabled, with <code>codex exec</code> available as a compatibility fallback.</p>
+            <label class="checkbox-row"><input id="setup-codex-enabled" type="checkbox" ${codex.enabled !== false ? 'checked' : ''}> Enable Codex agents</label>
+            <label class="checkbox-row"><input id="setup-codex-appserver" type="checkbox" ${codex.preferAppServer !== false ? 'checked' : ''}> Prefer app-server protocol</label>
+            <label class="checkbox-row"><input id="setup-codex-main" type="checkbox" ${codex.includeMain !== false ? 'checked' : ''}> Show Codex Main agent</label>
+            <label class="checkbox-row"><input id="setup-codex-native" type="checkbox" ${codex.includeNativeAgents !== false ? 'checked' : ''}> Discover native <code>$CODEX_HOME/agents</code></label>
+            <div class="row"><label for="setup-codex-home">Codex Home</label><input id="setup-codex-home" value="${esc(codex.homePath || '')}" placeholder="~/.codex"></div>
+            <div class="row"><label for="setup-codex-bin">Codex CLI</label><input id="setup-codex-bin" value="${esc(codex.binary || '')}" placeholder="codex or /path/to/codex"></div>
+            <div class="row"><label for="setup-codex-workspace">Workspace Root</label><input id="setup-codex-workspace" value="${esc(codex.workspaceRoot || '')}" placeholder="/data/codex-agents"></div>
+            <div class="row"><label for="setup-codex-main-workspace">Main Workspace</label><input id="setup-codex-main-workspace" value="${esc(codex.mainWorkspace || '')}" placeholder="/data/codex-main"></div>
+            <div class="row"><label for="setup-codex-model">Default Model</label><input id="setup-codex-model" value="${esc(codex.model || '')}" placeholder="optional"></div>
+            <div class="row"><label for="setup-codex-sandbox">Sandbox</label><select id="setup-codex-sandbox">${selectOptions(CODEX_SANDBOX, codex.sandbox || 'workspace-write')}</select></div>
+            <div class="row"><label for="setup-codex-approval">Approvals</label><select id="setup-codex-approval">${selectOptions(CODEX_APPROVAL, codex.approvalPolicy || 'never')}</select></div>
+            <div class="provider-tools" style="justify-content:flex-start">
+                <button type="button" class="btn btn-green" data-action="save-codex">Save Codex Setup</button>
+                <button type="button" class="btn btn-blue" data-action="test-codex">Test Codex</button>
+            </div>
+            <p class="muted">Test checks the values in this form without saving them.</p>
+            <p id="setup-codex-status" class="status-msg"></p>
+            <p><code>codex login</code></p>
+            <p><code>$CODEX_HOME/agents/*.toml</code></p>
+        </div>
+    </div>`;
+}
+
+function renderClaudeCode() {
+    const root = document.getElementById('claude-code-models');
+    const claude = nativeData.claudeCode || {};
+    root.innerHTML = `<div class="grid">
+        <div class="card wide"><div class="provider-name">Claude Code Agent Integration</div>
+            <p class="muted">Virtual Office can discover and create Claude Code-backed agents through the native Claude Code CLI. Chat streams through <code>claude -p --output-format stream-json --include-partial-messages</code> and keeps Claude session IDs for resume.</p>
+            <label class="checkbox-row"><input id="setup-claude-enabled" type="checkbox" ${claude.enabled !== false ? 'checked' : ''}> Enable Claude Code agents</label>
+            <label class="checkbox-row"><input id="setup-claude-main" type="checkbox" ${claude.includeMain !== false ? 'checked' : ''}> Show Claude Code Main agent</label>
+            <label class="checkbox-row"><input id="setup-claude-native" type="checkbox" ${claude.includeNativeAgents !== false ? 'checked' : ''}> Discover native <code>$CLAUDE_CONFIG_DIR/agents</code></label>
+            <label class="checkbox-row"><input id="setup-claude-register" type="checkbox" ${claude.registerNativeAgents !== false ? 'checked' : ''}> Register new standard agents in native Claude Code</label>
+            <div class="row"><label for="setup-claude-home">Claude Config Dir</label><input id="setup-claude-home" value="${esc(claude.homePath || '')}" placeholder="~/.claude"></div>
+            <div class="row"><label for="setup-claude-bin">Claude CLI</label><input id="setup-claude-bin" value="${esc(claude.binary || '')}" placeholder="claude or /path/to/claude"></div>
+            <div class="row"><label for="setup-claude-workspace">Workspace Root</label><input id="setup-claude-workspace" value="${esc(claude.workspaceRoot || '')}" placeholder="/data/claude-code-agents"></div>
+            <div class="row"><label for="setup-claude-main-workspace">Main Workspace</label><input id="setup-claude-main-workspace" value="${esc(claude.mainWorkspace || '')}" placeholder="/data/claude-code-main"></div>
+            <div class="row"><label for="setup-claude-model">Default Model</label><input id="setup-claude-model" value="${esc(claude.model || '')}" placeholder="optional"></div>
+            <div class="row"><label for="setup-claude-permission">Permission Mode</label><select id="setup-claude-permission">${selectOptions(CLAUDE_PERMISSION_MODES, claude.permissionMode || 'acceptEdits')}</select></div>
+            <div class="provider-tools" style="justify-content:flex-start">
+                <button type="button" class="btn btn-green" data-action="save-claude">Save Claude Code Setup</button>
+                <button type="button" class="btn btn-blue" data-action="test-claude">Test Claude Code</button>
+            </div>
+            <p class="muted">Test checks the values in this form without saving them.</p>
+            <p id="setup-claude-status" class="status-msg"></p>
+            <p><code>claude auth login</code></p>
+            <p><code>claude -p --output-format stream-json --include-partial-messages</code></p>
+            <p><code>$CLAUDE_CONFIG_DIR/agents/*.md</code></p>
+        </div>
+    </div>`;
+}
+
+function renderSetup() {
+    const root = document.getElementById('native-setup');
+    root.innerHTML = `<div class="grid">
+        <div class="card wide"><div class="provider-name">Native Setup Guide</div>
+            <p class="muted">Use each provider tab for day-to-day settings. This guide shows where the underlying native configuration lives.</p>
+        </div>
+        <div class="card"><div class="provider-name">OpenClaw Cloud Providers</div>
+            <p class="muted">Anthropic, OpenAI, Google, OpenRouter, and similar services use auth profiles. They should not be edited like local endpoint providers.</p>
+            <p><code>openclaw models auth paste-api-key --provider &lt;provider&gt;</code></p>
+            <p><code>openclaw models auth login --provider &lt;provider&gt;</code></p>
+            <p><code>openclaw models auth list --json</code></p>
+            <p>Configure them in <code>OpenClaw Models → Cloud Service Providers</code>.</p>
+        </div>
+        <div class="card"><div class="provider-name">OpenClaw Local Providers</div>
+            <p class="muted">Ollama, LM Studio, and custom OpenAI-compatible endpoints use a base URL plus a model list.</p>
+            <p><code>models.providers.&lt;provider&gt;.baseUrl</code></p>
+            <p><code>models.providers.&lt;provider&gt;.api</code></p>
+            <p><code>models.providers.&lt;provider&gt;.models[]</code></p>
+            <p>Configure them in <code>OpenClaw Models → Installed Local Providers</code>.</p>
+        </div>
+        <div class="card"><div class="provider-name">Hermes Providers</div>
+            <p class="muted">Hermes profiles keep their active model in profile config and custom endpoints as aliases. Change them in Hermes itself.</p>
+            <p><code>hermes auth add &lt;provider&gt; --type api-key</code></p>
+            <p><code>model.provider / model.default / model.base_url</code></p>
+            <p><code>model_aliases.&lt;alias&gt;</code></p>
+            <p>The <code>Hermes Models</code> tab shows what each connection reports.</p>
+        </div>
+        <div class="card"><div class="provider-name">Codex CLI Agents</div>
+            <p class="muted">Codex CLI has its own home, auth, workspaces, sandbox mode, and native custom-agent directory.</p>
+            <p><code>codex login</code></p>
+            <p><code>codex app-server --stdio</code></p>
+            <p><code>$CODEX_HOME/agents/*.toml</code></p>
+            <p>Configure it in the <code>Codex CLI</code> tab.</p>
+        </div>
+        <div class="card"><div class="provider-name">Claude Code Agents</div>
+            <p class="muted">Claude Code has its own config dir, auth state, workspace roots, permission mode, and markdown subagents.</p>
+            <p><code>claude auth login</code></p>
+            <p><code>claude -p --output-format stream-json --include-partial-messages</code></p>
+            <p><code>$CLAUDE_CONFIG_DIR/agents/*.md</code></p>
+            <p>Configure it in the <code>Claude Code</code> tab.</p>
+        </div>
+        <div class="card wide"><div class="provider-name">Sign-in with a browser (OAuth)</div>
+            <p class="muted">API keys and local providers can be set up here. Providers that sign in through a browser (OAuth) are set up with the provider's own command above, run once on the computer that hosts the agents.</p>
+        </div>
+    </div>`;
+}
+
+function fillOpenClawPreset() {
+    const preset = val('oc-provider-preset');
+    if (preset === 'ollama') {
+        document.getElementById('oc-provider-id').value = 'ollama';
+        document.getElementById('oc-provider-url').value = 'http://localhost:11434';
+        document.getElementById('oc-provider-api').value = 'ollama';
+    } else if (preset === 'lmstudio') {
+        document.getElementById('oc-provider-id').value = 'lmstudio';
+        document.getElementById('oc-provider-url').value = 'http://localhost:1234/v1';
+        document.getElementById('oc-provider-api').value = 'openai-completions';
+    } else {
+        document.getElementById('oc-provider-id').value = 'custom';
+        document.getElementById('oc-provider-url').value = '';
+        document.getElementById('oc-provider-api').value = 'openai-completions';
+    }
+}
+
+// ---------- saving ----------
+// Never throws: network errors, non-JSON and HTTP errors all come back as {ok:false, error}.
+async function postJson(url, body) {
+    let res;
+    try {
+        res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body) });
+    } catch (e) {
+        return { ok:false, error:'Could not reach this office server.' };
+    }
+    const text = await res.text().catch(() => '');
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+    if (!data || typeof data !== 'object') {
+        return { ok:false, error: res.ok ? 'The server sent an unreadable answer.' : `The request failed (HTTP ${res.status}).` };
+    }
+    if (!res.ok) data.ok = false;
+    if (data.error && typeof data.error === 'object') data.error = data.error.message || data.error.code || JSON.stringify(data.error);
+    if (data.ok === false && !data.error) data.error = `The request failed (HTTP ${res.status}).`;
+    if (data.ok === undefined) data.ok = res.ok;
+    return data;
+}
+
+// One action at a time per button: disabled while pending, status line updated before and after.
+async function runAction(btn, statusId, pendingText, work) {
+    if (btn && btn.dataset.busy === '1') return;
+    if (btn) { btn.dataset.busy = '1'; btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+    if (statusId && pendingText) setPending(statusId, pendingText);
+    try {
+        await work();
+    } catch (e) {
+        if (statusId) setStatus(statusId, { ok:false, error: e && e.message ? e.message : String(e) });
+    } finally {
+        if (btn && btn.isConnected) { delete btn.dataset.busy; btn.disabled = false; btn.removeAttribute('aria-busy'); }
+    }
+}
+
+function codexSetupPayload() {
+    return {
+        enabled: checked('setup-codex-enabled'),
+        homePath: val('setup-codex-home') || null,
+        binary: val('setup-codex-bin') || null,
+        workspaceRoot: val('setup-codex-workspace') || null,
+        mainWorkspace: val('setup-codex-main-workspace') || null,
+        model: val('setup-codex-model') || '',
+        sandbox: val('setup-codex-sandbox') || 'workspace-write',
+        approvalPolicy: val('setup-codex-approval') || 'never',
+        preferAppServer: checked('setup-codex-appserver'),
+        includeMain: checked('setup-codex-main'),
+        includeNativeAgents: checked('setup-codex-native')
+    };
+}
+
+function claudeCodeSetupPayload() {
+    return {
+        enabled: checked('setup-claude-enabled'),
+        homePath: val('setup-claude-home') || null,
+        binary: val('setup-claude-bin') || null,
+        workspaceRoot: val('setup-claude-workspace') || null,
+        mainWorkspace: val('setup-claude-main-workspace') || null,
+        model: val('setup-claude-model') || '',
+        permissionMode: val('setup-claude-permission') || 'acceptEdits',
+        includeMain: checked('setup-claude-main'),
+        includeNativeAgents: checked('setup-claude-native'),
+        registerNativeAgents: checked('setup-claude-register')
+    };
+}
+
+// Only fields that differ from what the server reported, so unknown values are never rewritten.
+function changedFields(payload, current) {
+    const out = {};
+    for (const [key, value] of Object.entries(payload)) {
+        const before = current ? current[key] : undefined;
+        const norm = v => (v === null || v === undefined ? '' : v);
+        if (typeof value === 'boolean') { if (value !== (before !== false)) out[key] = value; }
+        else if (norm(value) !== norm(before)) out[key] = value;
+    }
+    return out;
+}
+
+function countText(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+// A test never runs a program path it is sent (the server takes it from the saved settings only), so a CLI path typed
+// here and not saved yet is not what the test ran: say so next to the result.
+function unsavedPathNote(payload, current) {
+    return Object.prototype.hasOwnProperty.call(changedFields({ binary: payload.binary }, current), 'binary')
+        ? ' The CLI path you typed is used once you save; this test ran the saved one (or the one on PATH).' : '';
+}
+function withPathNote(data, okText, note) {
+    if (!note) return okText;
+    if (!data.ok) data.error = (data.error || 'Failed') + note;
+    return okText + note;
+}
+
+const actions = {
+    'reload': () => reloadNative(),
+    'sync-static': (btn) => runAction(btn, 'oc-managed-auth-status', 'Syncing…', async () => {
+        const data = await postJson('/api/native-models/openclaw/auth/sync-static', {});
+        setStatus('oc-managed-auth-status', data, 'Synced static profiles to ' + countText(data.touchedAgents || 0, 'agent store'));
+        if (data.ok) refreshNativeSoon();
+    }),
+    'reset-overrides': async (btn) => {
+        const agentId = btn.dataset.agent;
+        if (!agentId || !(await confirmAction(
+            'Reset static auth overrides for ' + agentId + '? Managed static profiles will be copied from main and extra static overrides will be removed. OAuth profiles are left alone.',
+            { title:'Reset Static Overrides', okText:'Reset Overrides' }
+        ))) return;
+        return runAction(btn, 'oc-managed-auth-status', 'Resetting…', async () => {
+            const data = await postJson('/api/native-models/openclaw/auth/reset-overrides', { agent: agentId });
+            setStatus('oc-managed-auth-status', data, 'Reset static overrides for ' + agentId);
+            if (data.ok) refreshNativeSoon();
+        });
+    },
+    'save-local-provider': (btn) => {
+        const index = Number(btn.dataset.index);
+        const statusId = 'oc-local-provider-status-' + index;
+        return runAction(btn, statusId, 'Saving…', async () => {
+            const timeoutRaw = val('oc-local-provider-timeout-' + index);
+            const timeout = timeoutRaw ? Number(timeoutRaw) : null;
+            if (timeoutRaw && (!Number.isFinite(timeout) || timeout < 1)) throw new Error('Timeout must be a positive number of seconds.');
+            const body = {
+                provider: val('oc-local-provider-id-' + index),
+                baseUrl: val('oc-local-provider-url-' + index),
+                api: val('oc-local-provider-api-' + index),
+                apiKey: val('oc-local-provider-key-' + index),
+                timeoutSeconds: timeout,
+                models: openClawProviderModelsPayload(index)
+            };
+            const data = await postJson('/api/native-models/openclaw/provider', body);
+            setStatus(statusId, data, 'Saved ' + (data.provider || body.provider));
+            if (data.ok) {
+                const keyEl = document.getElementById('oc-local-provider-key-' + index);
+                if (keyEl) keyEl.value = '';
+                refreshNativeSoon();
+            }
+        });
+    },
+    'delete-local-provider': (btn) => {
+        const index = Number(btn.dataset.index);
+        const provider = (((nativeData?.openclaw || {}).localProviders || [])[index] || {}).provider;
+        return deleteOpenClawProviderById(btn, provider, 'oc-local-provider-status-' + index);
+    },
+    'delete-provider': (btn) => deleteOpenClawProviderById(btn, val('oc-delete-provider'), 'oc-delete-status'),
+    'save-provider': (btn) => runAction(btn, 'oc-provider-status', 'Saving…', async () => {
+        const provider = val('oc-provider-id');
+        if (!provider) throw new Error('Enter a provider ID.');
+        const data = await postJson('/api/native-models/openclaw/provider', { provider, baseUrl:val('oc-provider-url'), api:val('oc-provider-api'), apiKey:val('oc-provider-key'), models:val('oc-provider-models') });
+        setStatus('oc-provider-status', data, 'Saved ' + (data.provider || 'provider'));
+        if (data.ok) { document.getElementById('oc-provider-key').value = ''; refreshNativeSoon(); }
+    }),
+    'save-cloud-key': (btn) => {
+        const index = Number(btn.dataset.index);
+        const statusId = 'oc-cloud-status-' + index;
+        return runAction(btn, statusId, 'Saving…', async () => {
+            const provider = ((nativeData?.openclaw || {}).cloudProviders || [])[index] || {};
+            const apiKey = val('oc-cloud-key-' + index);
+            if (!apiKey) throw new Error('Paste an API key first.');
+            const data = await postJson('/api/native-models/openclaw/auth/api-key', { scope: 'global', provider: provider.provider || '', profileId: val('oc-cloud-profile-' + index), apiKey });
+            setStatus(statusId, data, 'Saved globally ' + (data.profileId || data.provider || ''));
+            if (data.ok) {
+                const keyEl = document.getElementById('oc-cloud-key-' + index);
+                if (keyEl) keyEl.value = '';
+                refreshNativeSoon();
+            }
+        });
+    },
+    'delete-cloud-key': async (btn) => {
+        const index = Number(btn.dataset.index);
+        const statusId = 'oc-cloud-status-' + index;
+        const provider = ((nativeData?.openclaw || {}).cloudProviders || [])[index] || {};
+        const profileId = val('oc-cloud-delete-' + index);
+        if (!profileId || !(await confirmAction('Delete OpenClaw auth profile ' + profileId + ' from all agents?', { title:'Delete Auth Profile', okText:'Delete Profile' }))) return;
+        return runAction(btn, statusId, 'Deleting…', async () => {
+            const data = await postJson('/api/native-models/openclaw/auth/delete', { scope:'global', provider: provider.provider || '', profileId });
+            setStatus(statusId, data, 'Deleted globally ' + profileId);
+            if (data.ok) refreshNativeSoon();
+        });
+    },
+    'set-agent-model': (btn) => {
+        const agentId = btn.dataset.agent;
+        const index = btn.dataset.index;
+        const statusId = 'oc-agent-status-' + index;
+        return runAction(btn, statusId, 'Applying…', async () => {
+            const selectedModel = val('oc-agent-' + index);
+            const data = await postJson('/api/native-models/openclaw/agent-model', { agent:agentId, model:selectedModel });
+            setStatus(statusId, data, 'Applied');
+            if (!data.ok) return;
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.dispatchEvent(new CustomEvent('vo:agent-model-changed', {
+                        detail: { agentId, providerKind: 'openclaw', model: data.model || selectedModel || '', defaulted: Boolean(data.defaulted) }
+                    }));
+                    window.parent.dispatchEvent(new CustomEvent('vo:agents-changed', { detail: { reason: 'model-changed', agentId } }));
+                }
+            } catch (_) {}
+            refreshNativeSoon();
+        });
+    },
+    'save-codex': (btn) => runAction(btn, 'setup-codex-status', 'Saving…', async () => {
+        const changes = changedFields(codexSetupPayload(), nativeData?.codex);
+        if (!Object.keys(changes).length) { setStatus('setup-codex-status', { ok:true }, 'Nothing changed'); return; }
+        const data = await postJson('/setup/save', { codex: changes });
+        setStatus('setup-codex-status', data, 'Codex setup saved');
+        if (data.ok) refreshNativeSoon();
+    }),
+    'test-codex': (btn) => runAction(btn, 'setup-codex-status', 'Testing Codex CLI with the values in this form…', async () => {
+        const payload = codexSetupPayload();
+        const note = unsavedPathNote(payload, nativeData?.codex);
+        const data = await postJson('/api/codex/test', payload);
+        const agents = (data.agents || []).length;
+        setStatus('setup-codex-status', data, withPathNote(data, 'Codex connected · ' + (data.protocol || 'codex') + ' · ' + countText(agents, 'agent') + ' (not saved)', note));
+    }),
+    'save-claude': (btn) => runAction(btn, 'setup-claude-status', 'Saving…', async () => {
+        const changes = changedFields(claudeCodeSetupPayload(), nativeData?.claudeCode);
+        if (!Object.keys(changes).length) { setStatus('setup-claude-status', { ok:true }, 'Nothing changed'); return; }
+        const data = await postJson('/setup/save', { claudeCode: changes });
+        setStatus('setup-claude-status', data, 'Claude Code setup saved');
+        if (data.ok) refreshNativeSoon();
+    }),
+    'open-ap': (btn) => { window.open(btn.dataset.href || '/providers.html?provider=hermes', '_blank', 'noopener'); },
+    'test-claude': (btn) => runAction(btn, 'setup-claude-status', 'Testing Claude Code CLI with the values in this form…', async () => {
+        const payload = claudeCodeSetupPayload();
+        const note = unsavedPathNote(payload, nativeData?.claudeCode);
+        const data = await postJson('/api/claude-code/test', payload);
+        setStatus('setup-claude-status', data, withPathNote(data, 'Claude Code connected · found ' + countText((data.agents || []).length, 'agent') + ' (not saved)', note));
+    }),
+};
+
+async function deleteOpenClawProviderById(btn, provider, statusId) {
+    if (!provider || !(await confirmAction('Delete OpenClaw provider ' + provider + '? Agents that use its models fall back to the default model.', { title:'Delete Provider', okText:'Delete Provider' }))) return;
+    return runAction(btn, statusId, 'Deleting…', async () => {
+        const data = await postJson('/api/native-models/openclaw/provider/delete', { provider });
+        setStatus(statusId, data, 'Deleted ' + provider);
+        if (data.ok) refreshNativeSoon();
+    });
+}
+
+document.addEventListener('click', event => {
+    const btn = event.target.closest('[data-action]');
+    if (!btn || btn.closest('#mvw-confirm-overlay')) return;
+    const handler = actions[btn.dataset.action];
+    if (!handler) return;
+    event.preventDefault();
+    handler(btn);
+});
+
+document.addEventListener('change', event => {
+    const el = event.target;
+    if (!el || !el.dataset) return;
+    if (el.dataset.change === 'context-mode') toggleOllamaContextOverride(Number(el.dataset.providerIndex), Number(el.dataset.modelIndex));
+    else if (el.dataset.change === 'provider-preset') fillOpenClawPreset();
+});
+
+fetch('/vo-config', { cache:'no-store' }).then(r => r.json()).then(d => {
+    if (d && d.office && d.office.name) document.title = 'Model Settings - ' + d.office.name;
+}).catch(() => {});
+
+window.VOModels = { reloadNative, postJson, changedFields, openClawProviderModelsPayload };
+showTab(location.hash.slice(1) || 'openclaw', { updateHash: false });
+reloadNative();
+})();
+</script>
+  <script src="ui-standalone.js?v=20260721-2"></script>
+  <script src="ui-themes.js?v=20260722-5"></script>
+</body>
+</html>

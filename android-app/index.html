@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>AI Office · Setup</title>
+<style>
+  :root{--bg:#070b18;--panel:rgba(18,27,56,.82);--line:rgba(126,164,255,.2);--text:#e8eeff;--muted:#93a4cc;--cyan:#4de3ff;--violet:#9a7bff;--green:#44e0a8;--amber:#ffbe5c}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;min-height:100dvh;padding:28px 18px calc(28px + env(safe-area-inset-bottom));font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:radial-gradient(circle at 15% -10%,rgba(77,227,255,.16),transparent 45%),radial-gradient(circle at 90% 0,rgba(154,123,255,.18),transparent 40%),var(--bg)}
+  .wrap{max-width:560px;margin:0 auto}
+  .logo{width:56px;height:56px;display:grid;place-items:center;border-radius:18px;font-size:30px;background:linear-gradient(135deg,var(--cyan),var(--violet));color:#061022;box-shadow:0 0 30px rgba(77,227,255,.35)}
+  h1{font-size:26px;margin:18px 0 6px;letter-spacing:.3px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+  .card{border:1px solid var(--line);border-radius:18px;background:var(--panel);padding:18px;margin-bottom:14px;backdrop-filter:blur(12px)}
+  .status{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px var(--amber);flex:none}
+  .status.ok .dot{background:var(--green);box-shadow:0 0 10px var(--green)}
+  .status.ok{color:var(--green)}
+  h2{font-size:15px;margin:0 0 10px}
+  ol{margin:0;padding-left:20px;color:var(--muted);font-size:13.5px}
+  li{margin-bottom:8px}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{background:#050914;border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;font-size:11.5px;line-height:1.6;color:#cfe3ff;margin:12px 0 0}
+  .btn{min-height:52px;width:100%;border:0;border-radius:14px;font-size:15px;font-weight:700;margin-top:10px}
+  .primary{background:linear-gradient(120deg,var(--cyan),var(--violet));color:#061022;box-shadow:0 8px 24px rgba(77,227,255,.22)}
+  .secondary{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text)}
+  .btn:active{transform:scale(.985)}
+  .note{font-size:11px;color:var(--muted);margin-top:12px}
+  .pill{display:inline-block;font-size:10px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--cyan);margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">◈</div>
+  <h1>AI Office</h1>
+  <p class="sub">Real AI employees, running on your own phone.</p>
+
+  <div class="card">
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Checking local office server…</span></div>
+    <button class="btn primary" id="open" onclick="openOffice()">Open AI Office</button>
+    <button class="btn secondary" id="retry" onclick="retry()">Re-check server</button>
+  </div>
+
+  <div class="card" id="setup">
+    <span class="pill">FIRST TIME SETUP</span>
+    <h2>Start the office engine in Termux</h2>
+    <ol>
+      <li>Install <b>Termux</b> from F-Droid (Play Store version is outdated).</li>
+      <li>Install the real OpenCode CLI in Termux and keep its glibc packages available.</li>
+      <li>Tap <b>Open Termux</b>, then paste the commands below and press enter.</li>
+      <li>Come back here and tap <b>Re-check server</b>.</li>
+    </ol>
+    <pre id="commands">pkg install python nodejs-lts -y
+python3 -m pip install websockets==17.0.1
+git clone https://github.com/omxrex/ai-office-android.git ~/ai-office-android
+cd ~/ai-office-android
+(cd app/provider-layer &amp;&amp; npm ci --omit=dev --no-audit --no-fund)
+sh scripts/start-android.sh</pre>
+    <button class="btn secondary" onclick="copyCommands()">Copy setup commands</button>
+    <button class="btn secondary" onclick="openTermux()">Open Termux</button>
+    <p class="note">The office runs locally at 127.0.0.1:8090. Nothing is uploaded. Your chats, tasks and credentials stay on this device.</p>
+  </div>
+</div>
+<script>
+  function setStatus(ok, text){
+    var el = document.getElementById('status');
+    el.className = 'status' + (ok ? ' ok' : '');
+    document.getElementById('statusText').textContent = text;
+    document.getElementById('setup').style.display = ok ? 'none' : 'block';
+    document.getElementById('open').textContent = ok ? 'Open AI Office' : 'Start server first';
+  }
+  function openOffice(){
+    if (window.AndroidOffice) window.AndroidOffice.openOffice();
+    else window.location.href = 'http://127.0.0.1:8090/mobile';
+  }
+  function retry(){
+    if (window.AndroidOffice) window.AndroidOffice.checkServer();
+    else openOffice();
+  }
+  function openTermux(){
+    if (window.AndroidOffice) window.AndroidOffice.openTermux();
+  }
+  function copyCommands(){
+    var text = document.getElementById('commands').textContent;
+    if (window.AndroidOffice) window.AndroidOffice.copyText(text);
+    else if (navigator.clipboard) navigator.clipboard.writeText(text);
+  }
+  window.onServerStatus = function(ok){
+    setStatus(ok, ok ? 'Office server is running · ready' : 'Office server is not running yet');
+  };
+  setStatus(false, 'Checking local office server…');
+  if (window.AndroidOffice) window.AndroidOffice.checkServer();
+</script>
+</body>
+</html>

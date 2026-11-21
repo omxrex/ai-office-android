@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#070b13">
+<title>Cron Manager - My Virtual Office</title>
+<script>try{document.documentElement.dataset.uiTheme=localStorage.getItem('vo-ui-theme')==='light'?'light':'dark';let p=localStorage.getItem('vo-ui-preset')||'classic';document.documentElement.dataset.uiPreset=/^(classic|retro|cyberpunk|gameboy|custom)$/.test(p)?p:'classic'}catch(e){document.documentElement.dataset.uiTheme='dark';document.documentElement.dataset.uiPreset='classic'}</script>
+<script src="vo-auth.js"></script>
+<link rel="stylesheet" href="ui-tokens.css?v=20261101-v08">
+<style>
+:root {
+  --bg: #0a0a1a; --surface: #141428; --surface2: #1c1c3a;
+  --border: #2a2a5a; --text: #e0e0ff; --dim: #8888bb;
+  --accent: #ffd700; --green: #44ff88; --red: #ff4466;
+  --blue: #4488ff; --orange: #ffaa33;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.header { background: var(--surface); border-bottom: 2px solid var(--accent); padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.header h1 { font-family: 'Press Start 2P', monospace; font-size: 14px; color: var(--accent); white-space: nowrap; }
+.header .back { font-size: 13px; white-space: nowrap; }
+.header .status { margin-left: auto; font-size: 12px; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+.header .status.online { background: #1a3a2a; color: var(--green); }
+.header .status.offline { background: #3a1a1a; color: var(--red); }
+.header .status.connecting { background: #3a3a1a; color: var(--orange); }
+.header .status.locked { background: #2a2a3a; color: var(--dim); }
+
+.toolbar { background: var(--surface); padding: 10px 16px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.toolbar button { background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; white-space: nowrap; }
+.toolbar button:hover { opacity: 0.85; }
+.toolbar button:disabled { opacity: .45; cursor: not-allowed; }
+.toolbar .filter { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.toolbar select { background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 13px; max-width: 200px; }
+
+.jobs { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+.job-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; transition: border-color 0.2s; overflow: hidden; }
+.job-card:hover { border-color: var(--accent); }
+.job-card.disabled { opacity: 0.5; }
+.job-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.job-name { font-weight: 700; font-size: 15px; color: var(--accent); min-width: 0; word-break: break-word; }
+.job-agent { background: var(--surface2); padding: 3px 10px; border-radius: 12px; font-size: 12px; color: var(--blue); white-space: nowrap; }
+.job-schedule { font-size: 13px; color: var(--dim); font-family: monospace; white-space: nowrap; }
+.job-status { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.job-status .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge.ok { background: #1a3a2a; color: var(--green); }
+.badge.error { background: #3a1a1a; color: var(--red); }
+.badge.disabled { background: #2a2a3a; color: var(--dim); }
+.badge.pending { background: #3a3a1a; color: var(--orange); }
+.job-meta { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--dim); flex-wrap: wrap; }
+.job-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.job-actions button { padding: 5px 12px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap; }
+.job-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.job-actions button.run { border-color: var(--green); color: var(--green); }
+.job-actions button.run:hover { background: #1a3a2a; }
+.job-actions button.delete { border-color: var(--red); color: var(--red); }
+.job-actions button.delete:hover { background: #3a1a1a; }
+.job-actions button.toggle { border-color: var(--orange); color: var(--orange); }
+.job-actions button:disabled { opacity: .5; cursor: wait; }
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .header { padding: 10px 12px; gap: 8px; }
+  .header h1 { font-size: 11px; }
+  .toolbar { padding: 8px 12px; gap: 6px; }
+  .toolbar .filter { margin-left: 0; width: 100%; }
+  .toolbar select { flex: 1; min-width: 0; max-width: none; }
+  .jobs { padding: 8px 10px; gap: 10px; }
+  .job-card { padding: 10px; }
+  .job-name { min-width: 0; font-size: 14px; }
+  .job-row { gap: 6px; }
+  .job-meta { gap: 8px; font-size: 11px; }
+  .job-meta span { word-break: break-all; }
+  .job-actions { gap: 4px; }
+  .job-actions button { padding: 5px 8px; font-size: 11px; }
+  .modal { padding: 16px; }
+  .modal h2 { font-size: 10px; }
+  .form-row { flex-direction: column; gap: 0; }
+}
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: flex-start; padding-top: 60px; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; width: 600px; max-width: 95vw; max-height: 80vh; overflow-y: auto; padding: 24px; }
+.modal h2 { font-family: 'Press Start 2P', monospace; font-size: 12px; color: var(--accent); margin-bottom: 16px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+  padding: 8px 12px; border-radius: 6px; font-size: 14px; font-family: inherit;
+}
+.form-group textarea { min-height: 80px; resize: vertical; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); outline: none; }
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+.form-hint { font-size: 11px; color: var(--dim); margin-top: 2px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.modal-actions button { padding: 8px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; border: none; }
+.modal-actions .save { background: var(--accent); color: #000; }
+.modal-actions .cancel { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.modal-actions .save:hover { opacity: 0.85; }
+.modal-actions .save:disabled { opacity: .5; cursor: wait; }
+.modal-actions .cancel:hover { border-color: var(--accent); }
+.toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 13px; z-index: 2000; animation: fadeIn 0.3s; max-width: min(460px, calc(100vw - 32px)); }
+.toast.success { background: #1a3a2a; color: var(--green); border: 1px solid var(--green); }
+.toast.error { background: #3a1a1a; color: var(--red); border: 1px solid var(--red); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.empty { text-align: center; padding: 60px; color: var(--dim); font-size: 14px; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--dim); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+  .cron-page .vo-icon { width: 14px; height: 14px; flex: none; fill: currentColor; shape-rendering: crispEdges; vertical-align: -2px; }
+  .cron-page h1 .vo-icon { width: 16px; height: 16px; margin-right: 6px; color: var(--vo-accent); }
+  .cron-page .vo-state-icon .vo-icon { width: 32px; height: 32px; }
+</style>
+<link rel="stylesheet" href="ui-standalone.css?v=20260722-3">
+<link rel="stylesheet" href="ui-themes.css?v=20260805-workspace-chat-1">
+<link rel="stylesheet" href="v08-panels.css?v=20261101-v08">
+</head>
+<body class="ui-standalone cron-page">
+<!-- Pixel icons for this page (a subset of the office sprite). -->
+<svg aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-clock" viewBox="0 0 10 10"><path d="M2 0h6v1h-6zM1 1h1v1h-1zM8 1h1v1h-1zM0 2h1v1h-1zM5 2h1v1h-1zM9 2h1v1h-1zM0 3h1v1h-1zM5 3h1v1h-1zM9 3h1v1h-1zM0 4h1v1h-1zM5 4h3v1h-3zM9 4h1v1h-1zM0 5h1v1h-1zM9 5h1v1h-1zM0 6h1v1h-1zM9 6h1v1h-1zM1 7h1v1h-1zM8 7h1v1h-1zM2 8h6v1h-6z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 10 10"><path d="M4 0h2v1h-2zM4 1h2v1h-2zM4 2h2v1h-2zM4 3h2v1h-2zM0 4h10v1h-10zM0 5h10v1h-10zM4 6h2v1h-2zM4 7h2v1h-2zM4 8h2v1h-2zM4 9h2v1h-2z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 10 10"><path d="M1 1h8v1h-8zM0 2h1v1h-1zM9 2h1v1h-1zM0 3h1v1h-1zM2 3h2v1h-2zM5 3h2v1h-2zM9 3h1v1h-1zM0 4h1v1h-1zM9 4h1v1h-1zM0 5h1v1h-1zM9 5h1v1h-1zM1 6h3v1h-3zM5 6h4v1h-4zM3 7h1v1h-1zM5 7h1v1h-1zM3 8h2v1h-2z"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 10 10"><path d="M7 0h2v1h-2zM6 1h4v1h-4zM5 2h5v1h-5zM4 3h5v1h-5zM3 4h5v1h-5zM2 5h5v1h-5zM1 6h5v1h-5zM1 7h4v1h-4zM0 8h2v1h-2zM0 9h1v1h-1z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 10 10"><path d="M3 0h4v1h-4zM0 1h10v1h-10zM1 2h8v1h-8zM1 3h1v6h-1zM8 3h1v6h-1zM3 4h1v4h-1zM6 4h1v4h-1zM2 9h6v1h-6z"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 10 10"><path d="M4 0h2v1h-2zM4 1h2v1h-2zM3 2h4v1h-4zM3 3h1v1h-1zM6 3h1v1h-1zM4 3h2v3h-2zM2 4h1v2h-1zM7 4h1v2h-1zM1 6h1v2h-1zM8 6h1v2h-1zM4 7h2v1h-2zM0 8h1v1h-1zM9 8h1v1h-1zM0 9h10v1h-10z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 10 10"><path d="M3 0h4v1h-4zM2 1h1v1h-1zM7 1h1v1h-1zM2 2h1v1h-1zM7 2h1v1h-1zM1 3h8v1h-8zM1 4h8v1h-8zM1 5h3v1h-3zM6 5h3v1h-3zM1 6h3v1h-3zM6 6h3v1h-3zM1 7h8v1h-8zM1 8h8v1h-8z"/></symbol>
+  <symbol id="i-target" viewBox="0 0 10 10"><path d="M4 0h2v1h-2zM2 1h6v1h-6zM1 2h1v1h-1zM4 2h2v1h-2zM8 2h1v1h-1zM1 3h1v1h-1zM8 3h1v1h-1zM0 4h3v1h-3zM4 4h2v1h-2zM7 4h3v1h-3zM0 5h3v1h-3zM4 5h2v1h-2zM7 5h3v1h-3zM1 6h1v1h-1zM8 6h1v1h-1zM1 7h1v1h-1zM4 7h2v1h-2zM8 7h1v1h-1zM2 8h6v1h-6zM4 9h2v1h-2z"/></symbol>
+  <symbol id="i-hourglass" viewBox="0 0 10 10"><path d="M1 0h8v1h-8zM2 1h1v2h-1zM7 1h1v2h-1zM3 2h4v1h-4zM3 3h1v1h-1zM6 3h1v1h-1zM4 4h2v2h-2zM3 6h1v1h-1zM6 6h1v1h-1zM2 7h1v2h-1zM7 7h1v2h-1zM3 7h4v2h-4zM1 9h8v1h-8z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 10 10"><path d="M2 0h4v1h-4zM1 1h1v1h-1zM6 1h1v1h-1zM0 2h1v3h-1zM7 2h1v3h-1zM1 5h1v1h-1zM6 5h1v1h-1zM2 6h4v1h-4zM6 6h2v1h-2zM7 7h2v1h-2zM8 8h2v2h-2z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 10 10"><path d="M3 1h5v1h-5zM2 2h1v1h-1zM1 3h1v4h-1zM2 7h1v1h-1zM3 8h4v1h-4zM7 7h1v1h-1zM8 5h1v2h-1zM6 2h4v1h-4zM7 3h2v1h-2zM8 1h1v1h-1z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 10 10"><path d="M2 1h1v8h-1zM3 2h2v6h-2zM5 3h2v4h-2zM7 4h1v2h-1z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 10 10"><path d="M2 1h2v8h-2zM6 1h2v8h-2z"/></symbol>
+</svg>
+
+<div class="header">
+  <a href="/" class="back">← Office</a>
+  <h1><svg class="vo-icon" aria-hidden="true" focusable="false"><use href="#i-clock"/></svg> Cron manager</h1>
+  <span id="ws-status" class="status connecting" role="status" aria-live="polite">Connecting...</span>
+  <button type="button" class="ui-theme-toggle" data-ui-theme-toggle>Light</button>
+</div>
+
+<div class="toolbar" id="cron-toolbar">
+  <button type="button" id="btn-new-job" disabled><svg class="vo-icon" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg> New job</button>
+  <button type="button" id="btn-refresh" class="cron-secondary-btn"><svg class="vo-icon" aria-hidden="true" focusable="false"><use href="#i-refresh"/></svg> Refresh</button>
+  <div class="filter">
+    <label for="filter-agent" class="cron-filter-label">Agent:</label>
+    <select id="filter-agent">
+      <option value="">All Agents</option>
+    </select>
+    <label class="cron-filter-label cron-filter-check">
+      <input type="checkbox" id="filter-disabled"> Show Disabled
+    </label>
+  </div>
+</div>
+
+<div id="jobs-container" class="jobs" aria-live="polite">
+  <div class="empty"><span class="spinner"></span> Loading jobs...</div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div id="modal" class="modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h2 id="modal-title">NEW CRON JOB</h2>
+    <div id="modal-readonly-note" class="cron-readonly-note" hidden></div>
+
+    <fieldset id="job-form" class="cron-form">
+    <div class="form-group">
+      <label for="f-name">Job Name</label>
+      <input id="f-name" placeholder="e.g. Morning Standup" autocomplete="off">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="f-agent">Agent</label>
+        <select id="f-agent"></select>
+      </div>
+      <div class="form-group">
+        <label for="f-target">Session Target</label>
+        <select id="f-target">
+          <option value="isolated">Isolated (agentTurn)</option>
+          <option value="main">Main (systemEvent)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="f-wake">Wake Mode</label>
+        <select id="f-wake">
+          <option value="now">Run when due</option>
+          <option value="next-heartbeat">Next heartbeat</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="f-sched-type">Schedule Type</label>
+      <select id="f-sched-type">
+        <option value="cron">Cron Expression</option>
+        <option value="every">Recurring Interval</option>
+        <option value="at">One-shot (at time)</option>
+      </select>
+    </div>
+
+    <div id="sched-cron">
+      <div id="cron-picker">
+        <div class="form-group">
+          <label for="f-cron-time">Time</label>
+          <input id="f-cron-time" type="time" value="09:00" class="cron-time-input">
+        </div>
+        <div class="form-group">
+          <span class="cron-field-label" id="days-label">Days</span>
+          <div class="cron-day-presets">
+            <button type="button" class="day-preset" data-days="weekdays">Weekdays</button>
+            <button type="button" class="day-preset" data-days="weekends">Weekends</button>
+            <button type="button" class="day-preset" data-days="everyday">Every Day</button>
+          </div>
+          <div class="cron-day-chips" role="group" aria-labelledby="days-label">
+            <label class="day-chip"><input type="checkbox" class="day-cb" value="1"><span>Mon</span></label>
+            <label class="day-chip"><input type="checkbox" class="day-cb" value="2"><span>Tue</span></label>
+            <label class="day-chip"><input type="checkbox" class="day-cb" value="3"><span>Wed</span></label>
+            <label class="day-chip"><input type="checkbox" class="day-cb" value="4"><span>Thu</span></label>
+            <label class="day-chip"><input type="checkbox" class="day-cb" value="5"><span>Fri</span></label>
+            <label class="day-chip"><input type="checkbox" class="day-cb" value="6"><span>Sat</span></label>
+            <label class="day-chip"><input type="checkbox" class="day-cb" value="0"><span>Sun</span></label>
+          </div>
+        </div>
+      </div>
+      <div id="cron-picker-note" class="cron-picker-note" hidden>This schedule has more detail than the simple time and day picker can show. Edit the expression below; nothing else about it will change.</div>
+      <div class="form-group">
+        <label for="f-cron-expr">Cron expression</label>
+        <input id="f-cron-expr" class="cron-expr-input" spellcheck="false" autocomplete="off" placeholder="0 9 * * 1-5" aria-describedby="cron-expr-hint">
+        <div class="form-hint" id="cron-expr-hint">minute hour day-of-month month day-of-week. The picker above fills this in for you.</div>
+      </div>
+      <div class="form-group">
+        <label for="f-cron-tz">Timezone</label>
+        <input id="f-cron-tz" placeholder="e.g. America/New_York" autocomplete="off">
+        <div class="form-hint">Blank uses the gateway computer's time zone.</div>
+      </div>
+    </div>
+
+    <div id="sched-every" class="form-row" hidden>
+      <div class="form-group">
+        <label for="f-every-min">Interval (minutes)</label>
+        <input id="f-every-min" type="number" min="1" step="1" placeholder="30">
+      </div>
+    </div>
+
+    <div id="sched-at" hidden>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-at-date">Date</label>
+          <input id="f-at-date" type="date">
+        </div>
+        <div class="form-group">
+          <label for="f-at-time">Time</label>
+          <input id="f-at-time" type="time">
+        </div>
+      </div>
+      <div class="form-hint">Runs once at this date and time (your browser's time zone).</div>
+    </div>
+
+    <div class="form-group">
+      <label for="f-message">Message / Prompt</label>
+      <textarea id="f-message" placeholder="What should the agent do?"></textarea>
+    </div>
+
+    <div class="form-group" id="timeout-settings">
+      <label for="f-timeout">Timeout (seconds)</label>
+      <input id="f-timeout" type="number" min="10" step="1" placeholder="Default" class="cron-timeout-input">
+      <div class="form-hint">Leave blank to use OpenClaw's default.</div>
+    </div>
+
+    <div id="delivery-settings" class="cron-delivery">
+      <span class="cron-delivery-title"><svg class="vo-icon" aria-hidden="true" focusable="false"><use href="#i-chat"/></svg> Delivery settings</span>
+      <div id="delivery-readonly-note" class="form-hint" hidden></div>
+      <div class="form-group">
+        <label for="f-delivery">Delivery Mode</label>
+        <select id="f-delivery">
+          <option value="none">Silent (no delivery)</option>
+          <option value="announce">Announce result to chat</option>
+        </select>
+      </div>
+      <div id="delivery-fields" hidden>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="f-del-channel">Channel</label>
+            <select id="f-del-channel">
+              <option value="telegram">Telegram</option>
+              <option value="webchat">Webchat</option>
+              <option value="discord">Discord</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="signal">Signal</option>
+              <option value="slack">Slack</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="f-del-account">Account</label>
+            <select id="f-del-account">
+              <option value="">Default</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="f-del-to">Send To (Chat ID / User ID)</label>
+          <input id="f-del-to" placeholder="e.g. 123456789" autocomplete="off">
+          <div class="form-hint">Telegram chat ID, Discord channel or user ID, or phone number.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="cron-check-label"><input type="checkbox" id="f-enabled" checked> Enabled</label>
+    </div>
+    </fieldset>
+
+    <details id="modal-raw" class="cron-raw" hidden>
+      <summary>Full job settings (read only)</summary>
+      <pre id="modal-raw-json"></pre>
+    </details>
+
+    <div class="modal-actions">
+      <button type="button" class="cancel" id="modal-cancel">Cancel</button>
+      <button type="button" class="save" id="modal-save">Create Job</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const SIMPLE_SCHEDULES = new Set(['cron', 'every', 'at']);
+const SIMPLE_PAYLOADS = new Set(['agentTurn', 'systemEvent']);
+const SIMPLE_TARGETS = new Set(['isolated', 'main']);
+const SIMPLE_DELIVERY = new Set(['none', 'announce']);
+const STATUS_CLASSES = { ok: 'ok', success: 'ok', succeeded: 'ok', error: 'error', failed: 'error', timeout: 'error', lost: 'error', skipped: 'disabled', disabled: 'disabled', running: 'pending', pending: 'pending', queued: 'pending' };
+const DAY_NAMES = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun' };
+const LICENSE_URL = 'https://myvirtualoffice.ai';
+const POLL_MS = 60000;
+
+const state = {
+  transport: 'proxy',
+  rpcUrl: '/api/openclaw/rpc',
+  eventsUrl: '/api/openclaw/events',
+  token: '',
+  gatewayUrl: '',
+  wsPort: 0,
+  version: 'unknown',
+  protocol: 4,
+  ws: null,
+  wsReady: null,
+  wsPending: new Map(),
+  reqId: 0,
+  source: null,
+  phase: 'connecting', // connecting | ready | error | locked
+  agents: [],
+  jobs: [],
+  loaded: false,
+  loading: null,
+  editing: null,
+  readOnly: false,
+  saving: false,
+  opener: null,
+  delivery: { channels: [], labels: {}, accounts: {} },
+  eventRetry: 0,
+  eventRetryTimer: null,
+  reloadTimer: null,
+  pollTimer: null,
+};
+
+class RpcError extends Error {
+  constructor(message, code, status) {
+    super(message);
+    this.code = code || 'gateway_error';
+    this.status = status || 0;
+  }
+}
+
+// ---------- helpers ----------
+// Pixel icon from the page's sprite (v0.10 UI-07): never emoji.
+function ic(name) {
+  return '<svg class="vo-icon" aria-hidden="true" focusable="false"><use href="#i-' + String(name).replace(/[^a-z0-9-]/g, '') + '"/></svg>';
+}
+
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function localDateValue(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function localTimeValue(d) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+
+function browserTimeZone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_) { return ''; }
+}
+
+async function getJson(url) {
+  const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = data && (data.error && (data.error.message || data.error)) || `HTTP ${response.status}`;
+    throw new RpcError(String(detail), response.status === 401 ? 'auth_required' : 'http_error', response.status);
+  }
+  if (data === null) throw new RpcError('The server sent an empty or unreadable answer.', 'bad_response', response.status);
+  return data;
+}
+
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type === 'error' ? 'error' : 'success');
+  el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), type === 'error' ? 6000 : 3000);
+}
+
+async function confirmAction(opts) {
+  const ui = window.VOUI;
+  if (ui && typeof ui.confirm === 'function') {
+    try { return !!(await ui.confirm(opts)); } catch (_) { /* fall back */ }
+  }
+  return window.confirm(opts.body ? `${opts.title}\n\n${opts.body}` : opts.title);
+}
+
+function setStatus(kind, text, title) {
+  const el = $('ws-status');
+  el.className = 'status ' + kind;
+  el.textContent = text;
+  el.title = title || '';
+}
+
+function setToolbarEnabled(on) {
+  $('btn-new-job').disabled = !on;
+}
+
+// ---------- gateway access ----------
+function applyGatewayInfo(info) {
+  state.transport = info && info.transport === 'direct' ? 'direct' : 'proxy';
+  state.rpcUrl = (info && typeof info.rpcUrl === 'string' && info.rpcUrl) || '/api/openclaw/rpc';
+  state.eventsUrl = (info && typeof info.eventsUrl === 'string' && info.eventsUrl) || '/api/openclaw/events';
+  state.token = info && typeof info.token === 'string' ? info.token : '';
+  state.gatewayUrl = info && typeof info.gatewayUrl === 'string' ? info.gatewayUrl.trim() : '';
+  state.wsPort = info && Number(info.wsPort) || 0;
+  state.version = (info && info.openclawVersion) || 'unknown';
+  state.protocol = Number(info && info.gatewayProtocol) || 4;
+}
+
+async function rpc(method, params, timeoutMs) {
+  if (state.transport === 'direct') return wsRpc(method, params || {}, timeoutMs || 30000);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs || 40000);
+  let response;
+  try {
+    response = await fetch(state.rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ method, params: params || {} }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    throw new RpcError(e && e.name === 'AbortError' ? 'The gateway did not answer in time.' : 'Could not reach this office server.', 'network');
+  } finally {
+    clearTimeout(timer);
+  }
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body || body.ok === false) {
+    const err = body && body.error;
+    const message = typeof err === 'string' ? err : (err && (err.message || err.code)) || `HTTP ${response.status}`;
+    let code = err && typeof err === 'object' && err.code ? String(err.code) : '';
+    if (!code) code = response.status === 401 ? 'auth_required' : response.status === 403 ? 'proxy_forbidden' : 'gateway_error';
+    throw new RpcError(String(message), code, response.status);
+  }
+  return body;
+}
+
+function browserGatewayUrl() {
+  const localHosts = new Set(['127.0.0.1', 'localhost', '0.0.0.0', 'host.docker.internal']);
+  if (state.gatewayUrl) {
+    try {
+      const parsed = new URL(state.gatewayUrl);
+      if (parsed.protocol === 'ws:' || parsed.protocol === 'wss:') {
+        if (localHosts.has(parsed.hostname)) parsed.hostname = window.location.hostname || '127.0.0.1';
+        if (window.location.protocol === 'https:' && parsed.protocol === 'ws:') parsed.protocol = 'wss:';
+        return parsed.toString();
+      }
+    } catch (_) { /* fall through */ }
+  }
+  const host = window.location.hostname || '127.0.0.1';
+  if (window.location.protocol === 'https:') return `wss://${host}${window.location.port ? ':' + window.location.port : ''}/ws-gateway`;
+  return `ws://${host}:${state.wsPort || (parseInt(window.location.port || '80', 10) + 1)}`;
+}
+
+function wsConnect() {
+  if (state.wsReady) return state.wsReady;
+  state.wsReady = new Promise((resolve, reject) => {
+    let socket;
+    try { socket = new WebSocket(browserGatewayUrl()); } catch (e) { state.wsReady = null; reject(new RpcError('Could not open the gateway connection.', 'network')); return; }
+    state.ws = socket;
+    const timeout = setTimeout(() => { try { socket.close(); } catch (_) {} }, 8000);
+    let settled = false;
+    socket.onmessage = (evt) => {
+      let msg; try { msg = JSON.parse(evt.data); } catch (_) { return; }
+      if (msg.type === 'event' && msg.event === 'connect.challenge') {
+        const id = `cron-${++state.reqId}`;
+        state.wsPending.set(id, (res) => {
+          clearTimeout(timeout);
+          settled = true;
+          if (res.ok) resolve(socket);
+          else { state.wsReady = null; reject(new RpcError((res.error && (res.error.message || res.error.code)) || 'The gateway refused the login.', 'auth_failed')); }
+        });
+        socket.send(JSON.stringify({
+          type: 'req', id, method: 'connect',
+          params: {
+            minProtocol: state.protocol, maxProtocol: state.protocol,
+            client: { id: 'openclaw-control-ui', version: state.version || 'unknown', platform: 'web', mode: 'webchat' },
+            role: 'operator', scopes: ['operator.read', 'operator.write', 'operator.admin'],
+            caps: [], commands: [], permissions: {},
+            auth: { token: state.token }, locale: navigator.language || 'en-US', userAgent: 'virtual-office-cron/0.8'
+          }
+        }));
+        return;
+      }
+      if (msg.type === 'res') {
+        const cb = state.wsPending.get(msg.id);
+        if (cb) { state.wsPending.delete(msg.id); cb(msg); }
+        return;
+      }
+      if (msg.type === 'event' && msg.event === 'cron') onCronEvent(msg.payload);
+    };
+    socket.onclose = () => {
+      clearTimeout(timeout);
+      if (state.ws === socket) { state.ws = null; state.wsReady = null; }
+      state.wsPending.forEach((cb) => cb({ ok: false, error: { message: 'Gateway connection closed', code: 'disconnected' } }));
+      state.wsPending.clear();
+      if (!settled) reject(new RpcError('The gateway closed the connection.', 'disconnected'));
+    };
+  });
+  return state.wsReady;
+}
+
+async function wsRpc(method, params, timeoutMs) {
+  const socket = await wsConnect();
+  return new Promise((resolve, reject) => {
+    const id = `cron-${++state.reqId}`;
+    const timer = setTimeout(() => { state.wsPending.delete(id); reject(new RpcError('The gateway did not answer in time.', 'timeout')); }, timeoutMs);
+    state.wsPending.set(id, (res) => {
+      clearTimeout(timer);
+      if (!res || res.ok === false) {
+        const d = res && res.error;
+        reject(new RpcError(typeof d === 'string' ? d : (d && (d.message || d.code)) || 'Gateway request failed', d && d.code));
+        return;
+      }
+      resolve(res);
+    });
+    socket.send(JSON.stringify({ type: 'req', id, method, params }));
+  });
+}
+
+function connectEvents() {
+  if (state.transport !== 'proxy' || state.source || document.hidden) return;
+  let source;
+  try { source = new EventSource(state.eventsUrl, { withCredentials: true }); } catch (_) { return; }
+  state.source = source;
+  source.onmessage = (evt) => {
+    let msg; try { msg = JSON.parse(evt.data); } catch (_) { return; }
+    if (msg.type === 'proxy.ready') {
+      state.eventRetry = 0;
+      if (state.phase === 'ready') setStatus('online', 'Connected');
+      return;
+    }
+    if (msg.type === 'proxy.error') {
+      const text = (msg.payload && msg.payload.message) || 'Gateway unavailable';
+      setStatus('offline', 'Gateway offline', text);
+      closeEvents();
+      scheduleEventsReconnect();
+      return;
+    }
+    if (msg.type === 'event' && msg.event === 'cron') onCronEvent(msg.payload);
+  };
+  source.onerror = () => {
+    if (state.source !== source) return;
+    if (source.readyState === EventSource.CLOSED) {
+      closeEvents();
+      scheduleEventsReconnect();
+    }
+  };
+}
+
+function closeEvents() {
+  if (state.source) { try { state.source.close(); } catch (_) {} }
+  state.source = null;
+}
+
+function scheduleEventsReconnect() {
+  clearTimeout(state.eventRetryTimer);
+  if (state.phase === 'locked') return;
+  state.eventRetry += 1;
+  const delay = Math.min(3000 * Math.pow(1.6, state.eventRetry - 1), 30000);
+  state.eventRetryTimer = setTimeout(() => { connectEvents(); if (state.phase === 'error') loadJobs(); }, delay);
+}
+
+function onCronEvent() {
+  clearTimeout(state.reloadTimer);
+  state.reloadTimer = setTimeout(() => loadJobs({ quiet: true }), 700);
+}
+
+function startPolling() {
+  clearInterval(state.pollTimer);
+  state.pollTimer = setInterval(() => {
+    if (!document.hidden && state.phase === 'ready' && !state.saving) loadJobs({ quiet: true });
+  }, POLL_MS);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (state.phase === 'locked') return;
+  if (document.hidden) { closeEvents(); return; }
+  connectEvents();
+  loadJobs({ quiet: true });
+});
+
+// ---------- states ----------
+function describeError(err) {
+  const code = err && err.code;
+  const raw = err && err.message ? err.message : String(err || '');
+  if (code === 'method_not_allowed') {
+    return { title: 'Cron is not available through this office server yet', body: 'This Virtual Office server does not pass cron requests to OpenClaw. Update Virtual Office, then try again.', raw };
+  }
+  if (code === 'auth_required') {
+    return { title: 'Sign in needed', body: 'This office is protected with a passcode. Sign in again, then come back to this page.', raw };
+  }
+  if (code === 'proxy_forbidden') {
+    return { title: 'The office server refused this page', body: 'The connection token for this page expired or the request came from another site. Press Retry to get a fresh one.', raw };
+  }
+  if (code === 'network' || code === 'timeout') {
+    return { title: 'Cannot reach the gateway', body: raw, raw: '' };
+  }
+  if (/device identity|unauthori[sz]ed|auth|scope|token|refused|forbidden/i.test(raw)) {
+    return { title: 'The OpenClaw gateway refused the connection', body: 'Check the gateway token in Settings, and that the OpenClaw gateway is running.', raw };
+  }
+  return { title: 'Could not load cron jobs', body: 'The OpenClaw gateway answered with an error. Check that it is running, then try again.', raw };
+}
+
+function renderStateCard(kind, title, body, opts) {
+  const o = opts || {};
+  const container = $('jobs-container');
+  const icon = ic(kind === 'locked' ? 'lock' : kind === 'error' ? 'warn' : 'clock');
+  const actions = [];
+  if (o.retry) actions.push('<button type="button" class="vo-state-btn is-primary" data-action="retry">↻ Retry</button>');
+  if (o.license) {
+    actions.push(`<a class="vo-state-btn is-primary" href="${esc(LICENSE_URL)}" target="_blank" rel="noopener noreferrer">Get a license</a>`);
+    actions.push('<a class="vo-state-btn" href="/setup">Enter a license key</a>');
+  }
+  if (o.back) actions.push('<a class="vo-state-btn" href="/">← Back to office</a>');
+  container.innerHTML = `<section class="vo-state-card is-${esc(kind)}" role="${kind === 'error' ? 'alert' : 'status'}">
+    <div class="vo-state-icon" aria-hidden="true">${icon}</div>
+    <h2 class="vo-state-title">${esc(title)}</h2>
+    <p class="vo-state-body">${esc(body)}</p>
+    ${o.list ? `<ul class="vo-state-list">${o.list.map((item) => `<li>${esc(item)}</li>`).join('')}</ul>` : ''}
+    ${o.raw ? `<details class="vo-state-details"><summary>Technical details</summary><code>${esc(o.raw)}</code></details>` : ''}
+    ${actions.length ? `<div class="vo-state-actions">${actions.join('')}</div>` : ''}
+  </section>`;
+}
+
+function renderLocked() {
+  state.phase = 'locked';
+  setStatus('locked', 'Locked');
+  setToolbarEnabled(false);
+  $('cron-toolbar').hidden = true;
+  renderStateCard('locked', 'Cron Manager is a licensed feature', 'Schedule your OpenClaw agents to work on a timer. The demo office can show your agents, but scheduling stays locked until you add a license.', {
+    list: ['Daily briefings and reports at a set time', 'Recurring checks every few minutes or hours', 'One-time reminders', 'Results announced to your chat channels'],
+    license: true,
+    back: true,
+  });
+}
+
+function showLoadError(err) {
+  state.phase = 'error';
+  const info = describeError(err);
+  setStatus('offline', 'Not connected', info.raw || info.body);
+  setToolbarEnabled(false);
+  renderStateCard('error', info.title, info.body, { raw: info.raw, retry: true });
+}
+
+// ---------- boot ----------
+async function boot() {
+  state.phase = 'connecting';
+  setStatus('connecting', 'Connecting...');
+  setToolbarEnabled(false);
+  $('jobs-container').innerHTML = '<div class="empty"><span class="spinner"></span> Loading jobs...</div>';
+  const [license, info, agents] = await Promise.all([
+    getJson('/api/license').catch(() => null),
+    getJson('/gateway-info').catch((e) => ({ __error: e })),
+    getJson('/api/agents').catch(() => null),
+  ]);
+  if (license && license.demo && license.limits && license.limits.cronManager === false) {
+    renderLocked();
+    return;
+  }
+  if (!info || info.__error) {
+    showLoadError(info && info.__error || new RpcError('Could not read the gateway settings from this office server.', 'network'));
+    return;
+  }
+  applyGatewayInfo(info);
+  applyAgents(agents);
+  connectEvents();
+  await loadJobs();
+  if (state.phase === 'ready') {
+    loadDeliveryOptions();
+    startPolling();
+  }
+}
+
+function applyAgents(data) {
+  const list = data && Array.isArray(data.agents) ? data.agents : [];
+  state.agents = list
+    .filter((a) => a && (!a.providerKind || a.providerKind === 'openclaw'))
+    .map((a) => {
+      const id = String(a.providerAgentId || a.id || a.statusKey || '').trim();
+      const name = String(a.name || id).trim();
+      return { id, label: `${a.emoji ? String(a.emoji) + ' ' : ''}${name}${a.role ? ' (' + String(a.role).slice(0, 60) + ')' : ''}`, short: `${a.emoji ? String(a.emoji) + ' ' : ''}${name}` };
+    })
+    .filter((a) => a.id);
+  populateAgentSelects();
+}
+
+function agentShortLabel(id) {
+  if (!id) return 'Default agent';
+  const a = state.agents.find((x) => x.id === id);
+  return a ? a.short : id;
+}
+
+function populateAgentSelects() {
+  const filterSel = $('filter-agent');
+  const formSel = $('f-agent');
+  const currentFilter = filterSel.value;
+  while (filterSel.options.length > 1) filterSel.remove(1);
+  formSel.innerHTML = '';
+  formSel.add(new Option('Default Agent', ''));
+  const seen = new Set();
+  state.agents.forEach((a) => {
+    seen.add(a.id);
+    filterSel.add(new Option(a.label, a.id));
+    formSel.add(new Option(a.label, a.id));
+  });
+  state.jobs.forEach((j) => {
+    if (j.agentId && !seen.has(j.agentId)) {
+      seen.add(j.agentId);
+      filterSel.add(new Option(j.agentId, j.agentId));
+    }
+  });
+  if (currentFilter && seen.has(currentFilter)) filterSel.value = currentFilter;
+}
+
+function ensureSelectOption(select, value, label) {
+  if (!select || !value) return;
+  const exists = Array.from(select.options).some((option) => option.value === value);
+  if (!exists) select.add(new Option(label || value, value));
+}
+
+async function loadDeliveryOptions() {
+  try {
+    const response = await rpc('channels.status', {});
+    const status = response.payload || response;
+    const configured = status.channels || {};
+    const order = (Array.isArray(status.channelOrder) ? status.channelOrder : Object.keys(configured)).filter((id) => configured[id] && configured[id].configured !== false);
+    if (order.length) state.delivery.channels = order.map(String);
+    state.delivery.labels = status.channelLabels || {};
+    state.delivery.accounts = status.channelAccounts || {};
+  } catch (e) {
+    console.warn('[cron] delivery channels unavailable:', e && e.message);
+  }
+  const select = $('f-del-channel');
+  const current = select.value;
+  if (state.delivery.channels.length) {
+    select.innerHTML = '';
+    state.delivery.channels.forEach((id) => select.add(new Option(String(state.delivery.labels[id] || id), id)));
+  }
+  ensureSelectOption(select, current, current);
+  if (current) select.value = current;
+  populateDeliveryAccounts(select.value);
+}
+
+function populateDeliveryAccounts(channel, selectedValue) {
+  const select = $('f-del-account');
+  const selected = selectedValue !== undefined ? selectedValue : select.value;
+  select.innerHTML = '';
+  select.add(new Option('Default', ''));
+  const accounts = Array.isArray(state.delivery.accounts[channel]) ? state.delivery.accounts[channel] : [];
+  accounts.filter((account) => account && account.configured !== false).forEach((account) => {
+    const id = account.id || account.accountId;
+    if (id) select.add(new Option(String(account.label || account.name || id), String(id)));
+  });
+  ensureSelectOption(select, selected, selected ? selected + ' (current)' : '');
+  select.value = selected || '';
+}
+
+// ---------- jobs ----------
+async function loadJobs(opts) {
+  const quiet = opts && opts.quiet;
+  if (state.loading) return state.loading;
+  state.loading = (async () => {
+    try {
+      const res = await rpc('cron.list', { includeDisabled: true });
+      const payload = res.payload || res;
+      state.jobs = Array.isArray(payload.jobs) ? payload.jobs : (Array.isArray(res.jobs) ? res.jobs : []);
+      state.loaded = true;
+      state.phase = 'ready';
+      setStatus('online', 'Connected');
+      setToolbarEnabled(true);
+      populateAgentSelects();
+      renderJobs();
+    } catch (e) {
+      if (quiet && state.loaded) {
+        setStatus('offline', 'Not connected', e.message);
+        return;
+      }
+      showLoadError(e);
+    } finally {
+      state.loading = null;
+    }
+  })();
+  return state.loading;
+}
+
+function jobIsSimple(job) {
+  const s = job.schedule || {};
+  const p = job.payload || {};
+  const d = job.delivery || { mode: 'none' };
+  const reasons = [];
+  if (!SIMPLE_SCHEDULES.has(s.kind)) reasons.push(`its schedule type is "${s.kind || 'unknown'}"`);
+  if (!SIMPLE_PAYLOADS.has(p.kind)) reasons.push(`it runs a "${p.kind || 'unknown'}" payload`);
+  if (job.trigger) reasons.push('it has a condition trigger');
+  if (job.sessionTarget === 'main' && p.kind === 'agentTurn') reasons.push('it combines the main session with an agent message');
+  return { simple: reasons.length === 0, reasons, deliveryEditable: SIMPLE_DELIVERY.has(d.mode || 'none') };
+}
+
+function renderJobs() {
+  const container = $('jobs-container');
+  if (state.phase !== 'ready') return;
+  const agentFilter = $('filter-agent').value;
+  const showDisabled = $('filter-disabled').checked;
+  let jobs = state.jobs;
+  if (agentFilter) jobs = jobs.filter((j) => j.agentId === agentFilter);
+  if (!showDisabled) jobs = jobs.filter((j) => j.enabled !== false);
+
+  if (!jobs.length) {
+    const hidden = state.jobs.length - jobs.length;
+    container.innerHTML = `<section class="vo-state-card is-empty" role="status">
+      <div class="vo-state-icon" aria-hidden="true">${ic('clock')}</div>
+      <h2 class="vo-state-title">${state.jobs.length ? 'No jobs match these filters' : 'No cron jobs yet'}</h2>
+      <p class="vo-state-body">${state.jobs.length ? esc(`${hidden} job${hidden === 1 ? '' : 's'} hidden. Turn on "Show Disabled" or pick another agent.`) : 'Create a job to have an agent do something on a schedule, like a morning summary.'}</p>
+      ${state.jobs.length ? '' : '<div class="vo-state-actions"><button type="button" class="vo-state-btn is-primary" data-action="new">' + ic('plus') + ' New job</button></div>'}
+    </section>`;
+    return;
+  }
+
+  container.innerHTML = jobs.map((j) => {
+    const st = j.state || {};
+    const lastStatus = String(st.lastStatus || st.lastRunStatus || 'pending');
+    const statusClass = STATUS_CLASSES[lastStatus] || 'pending';
+    const schedText = formatSchedule(j.schedule);
+    const nextRun = st.nextRunAtMs ? new Date(st.nextRunAtMs).toLocaleString() : '—';
+    const lastRun = st.lastRunAtMs ? timeAgo(st.lastRunAtMs) : 'Never';
+    const duration = Number.isFinite(Number(st.lastDurationMs)) && st.lastDurationMs ? (Number(st.lastDurationMs) / 1000).toFixed(1) + 's' : '—';
+    const payload = j.payload || {};
+    const full = String(payload.message || payload.text || '');
+    const msgPreview = full.slice(0, 100);
+    const enabled = j.enabled !== false;
+    const id = String(j.id || '');
+    const name = String(j.name || j.id || 'Untitled job');
+    const lastError = st.lastError ? String(st.lastError) : '';
+    const info = jobIsSimple(j);
+    const del = j.delivery || {};
+    const deliveryText = del.mode === 'announce'
+      ? `<span class="cron-delivery-tag">${ic('chat')} ${esc(del.channel || '')}${del.to ? ' → ' + esc(del.to) : ''}</span>`
+      : (del.mode && del.mode !== 'none' ? `<span>${ic('chat')} ${esc(del.mode)}</span>` : '<span>Silent</span>');
+    return `<article class="job-card ${enabled ? '' : 'disabled'}" data-job-id="${esc(id)}">
+      <div class="job-row">
+        <span class="job-name">${esc(name)}</span>
+        <span class="job-agent" title="${esc(j.agentId || 'Default agent')}">${esc(agentShortLabel(j.agentId))}</span>
+        <span class="job-schedule">${esc(schedText)}</span>
+        <div class="job-status">
+          <span class="badge ${statusClass}">${esc(lastStatus)}</span>
+          ${enabled ? '' : '<span class="badge disabled">disabled</span>'}
+        </div>
+      </div>
+      <div class="job-meta">
+        <span>${ic('clock')} Next: ${esc(nextRun)}</span>
+        <span>${ic('refresh')} Last: ${esc(lastRun)}</span>
+        <span>${ic('hourglass')} Duration: ${esc(duration)}</span>
+        <span>${ic('target')} ${esc(payload.kind || '?')}</span>
+        ${deliveryText}
+        ${lastError ? `<span class="cron-error-tag" title="${esc(lastError)}">${ic('warn')} ${esc(lastError.slice(0, 80))}${lastError.length > 80 ? '…' : ''}</span>` : ''}
+      </div>
+      ${msgPreview ? `<div class="cron-msg-preview">"${esc(msgPreview)}${full.length > 100 ? '…' : ''}"</div>` : ''}
+      <div class="job-actions">
+        <button type="button" class="run" data-action="run" data-id="${esc(id)}">▶ Run Now</button>
+        <button type="button" data-action="edit" data-id="${esc(id)}">${info.simple ? ic('edit') + ' Edit' : ic('search') + ' View'}</button>
+        <button type="button" class="toggle" data-action="toggle" data-id="${esc(id)}">${enabled ? ic('pause') + ' Disable' : ic('play') + ' Enable'}</button>
+        <button type="button" class="delete" data-action="delete" data-id="${esc(id)}">${ic('trash')} Delete</button>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+function parseIntField(value, min, max) {
+  if (!/^\d+$/.test(value)) return null;
+  const n = parseInt(value, 10);
+  return n >= min && n <= max ? n : null;
+}
+
+// Simple = "M H * * DOW" with one minute, one hour and a plain weekday list/range.
+function parseSimpleCron(expr) {
+  const parts = String(expr || '').trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [mi, hr, dom, mon, dow] = parts;
+  const minute = parseIntField(mi, 0, 59);
+  const hour = parseIntField(hr, 0, 23);
+  if (minute === null || hour === null || dom !== '*' || mon !== '*') return null;
+  let days;
+  if (dow === '*') days = [0, 1, 2, 3, 4, 5, 6];
+  else {
+    const set = new Set();
+    for (const piece of dow.split(',')) {
+      const range = piece.match(/^(\d)-(\d)$/);
+      if (range) {
+        const a = Number(range[1]); const b = Number(range[2]);
+        if (a > b || b > 7) return null;
+        for (let i = a; i <= b; i++) set.add(i % 7);
+      } else if (/^\d$/.test(piece) && Number(piece) <= 7) set.add(Number(piece) % 7);
+      else return null;
+    }
+    days = Array.from(set).sort((a, b) => a - b);
+  }
+  return { minute, hour, days };
+}
+
+function formatSchedule(s) {
+  if (!s) return '?';
+  if (s.kind === 'cron') {
+    const simple = parseSimpleCron(s.expr);
+    if (!simple) return String(s.expr || '?') + (s.tz ? ` (${s.tz})` : '');
+    const ampm = simple.hour >= 12 ? 'PM' : 'AM';
+    const h12 = simple.hour === 0 ? 12 : simple.hour > 12 ? simple.hour - 12 : simple.hour;
+    const timeStr = `${h12}:${pad2(simple.minute)} ${ampm}`;
+    let dayStr = 'Every day';
+    if (simple.days.length < 7) {
+      const names = simple.days.map((d) => DAY_NAMES[d]);
+      if (simple.days.join(',') === '1,2,3,4,5') dayStr = 'Weekdays';
+      else if (simple.days.join(',') === '0,6') dayStr = 'Weekends';
+      else dayStr = names.join(', ');
+    }
+    return `${timeStr} · ${dayStr}`;
+  }
+  if (s.kind === 'every') {
+    const min = Number(s.everyMs) / 60000;
+    if (!Number.isFinite(min)) return 'Every ?';
+    return min >= 60 && min % 60 === 0 ? `Every ${min / 60} h` : `Every ${Math.round(min * 10) / 10} min`;
+  }
+  if (s.kind === 'at') {
+    const d = new Date(s.at);
+    return Number.isNaN(d.getTime()) ? `Once: ${s.at}` : `Once: ${d.toLocaleString()}`;
+  }
+  return String(s.kind || 'custom') + ' schedule';
+}
+
+function timeAgo(ms) {
+  const diff = Date.now() - ms;
+  if (diff < 0) return 'just now';
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return Math.floor(diff / 86400000) + 'd ago';
+}
+
+// ---------- job actions ----------
+function findJob(id) { return state.jobs.find((j) => String(j.id) === String(id)); }
+
+async function runJob(id, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+  try {
+    await rpc('cron.run', { id });
+    toast('Job started', 'success');
+  } catch (e) {
+    toast('Run failed: ' + e.message, 'error');
+  }
+  if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = '▶ Run Now'; }
+  setTimeout(() => loadJobs({ quiet: true }), 2000);
+}
+
+async function toggleJob(id, btn) {
+  const job = findJob(id);
+  if (!job) return;
+  const enable = job.enabled === false;
+  if (btn) btn.disabled = true;
+  try {
+    await rpc('cron.update', { id, patch: { enabled: enable } });
+    toast(enable ? 'Job enabled' : 'Job disabled', 'success');
+    await loadJobs({ quiet: true });
+  } catch (e) {
+    toast('Could not change the job: ' + e.message, 'error');
+    if (btn && btn.isConnected) btn.disabled = false;
+  }
+}
+
+async function deleteJob(id, btn) {
+  const job = findJob(id);
+  if (!job) return;
+  const ok = await confirmAction({ title: `Delete "${job.name || job.id}"?`, body: 'This removes the job from OpenClaw. It cannot be undone.', okLabel: 'Delete', danger: true });
+  if (!ok) return;
+  if (btn) btn.disabled = true;
+  try {
+    await rpc('cron.remove', { id });
+    toast('Job deleted', 'success');
+    await loadJobs({ quiet: true });
+  } catch (e) {
+    toast('Delete failed: ' + e.message, 'error');
+    if (btn && btn.isConnected) btn.disabled = false;
+  }
+}
+
+$('jobs-container').addEventListener('click', (event) => {
+  const btn = event.target.closest('[data-action]');
+  if (!btn || !$('jobs-container').contains(btn)) return;
+  const action = btn.dataset.action;
+  const id = btn.dataset.id;
+  if (action === 'retry') { boot(); return; }
+  if (action === 'new') { openCreateModal(btn); return; }
+  if (action === 'run') runJob(id, btn);
+  else if (action === 'edit') openEditModal(id, btn);
+  else if (action === 'toggle') toggleJob(id, btn);
+  else if (action === 'delete') deleteJob(id, btn);
+});
+
+// ---------- form ----------
+function setHidden(el, hidden) { el.hidden = !!hidden; }
+
+function toggleDeliveryFields() {
+  setHidden($('delivery-fields'), $('f-delivery').value !== 'announce');
+}
+
+function toggleTargetFields() {
+  const isMain = $('f-target').value === 'main';
+  setHidden($('timeout-settings'), isMain);
+  const deliverySelect = $('f-delivery');
+  const deliveryLocked = state.editing && state.editing.deliveryLocked;
+  if (isMain && !deliveryLocked) deliverySelect.value = 'none';
+  deliverySelect.disabled = isMain || !!deliveryLocked || state.readOnly;
+  $('delivery-settings').classList.toggle('is-muted', isMain);
+  $('delivery-settings').title = isMain ? 'Main-session system events do not produce a separate result to deliver.' : '';
+  toggleDeliveryFields();
+}
+
+function toggleScheduleFields() {
+  const type = $('f-sched-type').value;
+  setHidden($('sched-cron'), type !== 'cron');
+  setHidden($('sched-every'), type !== 'every');
+  setHidden($('sched-at'), type !== 'at');
+}
+
+function setDays(preset) {
+  document.querySelectorAll('.day-cb').forEach((cb) => {
+    const v = parseInt(cb.value, 10);
+    if (preset === 'weekdays') cb.checked = v >= 1 && v <= 5;
+    else if (preset === 'weekends') cb.checked = v === 0 || v === 6;
+    else if (preset === 'everyday') cb.checked = true;
+  });
+  syncExprFromPicker();
+}
+
+function getSelectedDays() {
+  return Array.from(document.querySelectorAll('.day-cb:checked')).map((cb) => parseInt(cb.value, 10)).sort((a, b) => a - b);
+}
+
+function pickerExpr() {
+  const time = $('f-cron-time').value || '09:00';
+  const [h, m] = time.split(':').map(Number);
+  const days = getSelectedDays();
+  const dow = days.length === 7 ? '*' : days.join(',');
+  return `${m || 0} ${h || 0} * * ${dow}`;
+}
+
+function syncExprFromPicker() {
+  if ($('cron-picker').hidden) return;
+  $('f-cron-expr').value = getSelectedDays().length ? pickerExpr() : '';
+}
+
+function syncPickerFromExpr() {
+  const expr = $('f-cron-expr').value.trim();
+  const simple = parseSimpleCron(expr);
+  const fits = !!simple || expr === '';
+  setHidden($('cron-picker'), !fits);
+  setHidden($('cron-picker-note'), fits);
+  if (!simple) return;
+  $('f-cron-time').value = `${pad2(simple.hour)}:${pad2(simple.minute)}`;
+  const set = new Set(simple.days);
+  document.querySelectorAll('.day-cb').forEach((cb) => { cb.checked = set.has(parseInt(cb.value, 10)); });
+}
+
+function cronTz() {
+  return $('f-cron-tz').value.trim();
+}
+
+function resetTargetOptions() {
+  const sel = $('f-target');
+  Array.from(sel.options).forEach((o) => { if (!SIMPLE_TARGETS.has(o.value)) o.remove(); });
+}
+
+function clearForm() {
+  $('f-name').value = '';
+  const agentSelect = $('f-agent');
+  agentSelect.value = Array.from(agentSelect.options).some((option) => option.value === 'main') ? 'main' : '';
+  resetTargetOptions();
+  $('f-target').value = 'isolated';
+  $('f-wake').value = 'now';
+  $('f-sched-type').value = 'cron';
+  $('f-cron-time').value = '09:00';
+  $('f-cron-tz').value = browserTimeZone();
+  document.querySelectorAll('.day-cb').forEach((cb) => { cb.checked = false; });
+  $('f-cron-expr').value = '';
+  setHidden($('cron-picker'), false);
+  setHidden($('cron-picker-note'), true);
+  $('f-every-min').value = '';
+  $('f-at-date').value = '';
+  $('f-at-time').value = '';
+  $('f-message').value = '';
+  $('f-timeout').value = '';
+  $('f-delivery').value = 'none';
+  const ch = $('f-del-channel');
+  ch.value = state.delivery.channels[0] || ch.options[0]?.value || '';
+  populateDeliveryAccounts(ch.value, '');
+  $('f-del-to').value = '';
+  $('f-enabled').checked = true;
+  setHidden($('delivery-readonly-note'), true);
+  toggleScheduleFields();
+  toggleTargetFields();
+}
+
+function populateForm(job, info) {
+  $('f-name').value = job.name || '';
+  const agentSelect = $('f-agent');
+  ensureSelectOption(agentSelect, job.agentId || '', (job.agentId || '') + ' (current)');
+  agentSelect.value = job.agentId || '';
+  resetTargetOptions();
+  const target = job.sessionTarget || (job.payload && job.payload.kind === 'systemEvent' ? 'main' : 'isolated');
+  ensureSelectOption($('f-target'), target, `${target} (current)`);
+  $('f-target').value = target;
+  $('f-wake').value = job.wakeMode === 'next-heartbeat' ? 'next-heartbeat' : 'now';
+  $('f-enabled').checked = job.enabled !== false;
+
+  const s = job.schedule || {};
+  $('f-sched-type').value = SIMPLE_SCHEDULES.has(s.kind) ? s.kind : 'cron';
+  if (s.kind === 'cron') {
+    $('f-cron-expr').value = s.expr || '';
+    $('f-cron-tz').value = s.tz || '';
+    syncPickerFromExpr();
+  } else if (s.kind === 'every') {
+    $('f-every-min').value = Number(s.everyMs) ? Math.round(Number(s.everyMs) / 60000 * 100) / 100 : '';
+  } else if (s.kind === 'at' && s.at) {
+    const d = new Date(s.at);
+    if (!Number.isNaN(d.getTime())) {
+      $('f-at-date').value = localDateValue(d);
+      $('f-at-time').value = localTimeValue(d);
+    }
+  }
+  toggleScheduleFields();
+
+  const p = job.payload || {};
+  $('f-message').value = p.message || p.text || '';
+  $('f-timeout').value = Number.isFinite(Number(p.timeoutSeconds)) && p.timeoutSeconds !== null && p.timeoutSeconds !== undefined ? String(p.timeoutSeconds) : '';
+
+  const del = job.delivery || {};
+  const mode = del.mode || 'none';
+  const deliverySel = $('f-delivery');
+  ensureSelectOption(deliverySel, mode, `${mode} (current)`);
+  deliverySel.value = mode;
+  const ch = $('f-del-channel');
+  ensureSelectOption(ch, del.channel || '', (del.channel || '') + ' (current)');
+  ch.value = del.channel || state.delivery.channels[0] || ch.options[0]?.value || '';
+  populateDeliveryAccounts(ch.value, del.accountId || '');
+  $('f-del-to').value = del.to || '';
+  const note = $('delivery-readonly-note');
+  if (!info.deliveryEditable) {
+    note.textContent = `This job delivers by "${mode}". This page keeps that setting as it is; change it in OpenClaw.`;
+    setHidden(note, false);
+  } else setHidden(note, true);
+  toggleTargetFields();
+}
+
+function setReadOnly(on, reasons) {
+  state.readOnly = !!on;
+  $('job-form').disabled = !!on;
+  const note = $('modal-readonly-note');
+  if (on) {
+    note.textContent = `View only: this page cannot edit this job because ${reasons.join(' and ')}. Use "openclaw automations edit" or the OpenClaw Control UI to change it. Run, Enable/Disable and Delete still work from the list.`;
+  }
+  setHidden(note, !on);
+  setHidden($('modal-save'), !!on);
+  $('modal-cancel').textContent = on ? 'Close' : 'Cancel';
+}
+
+function openModal(opener) {
+  state.opener = opener || document.activeElement;
+  $('modal').classList.add('open');
+  const modalEl = $('modal').querySelector('.modal');
+  modalEl.scrollTop = 0;
+  const first = state.readOnly ? $('modal-cancel') : $('f-name');
+  setTimeout(() => { try { first.focus(); } catch (_) {} }, 0);
+}
+
+function closeModal() {
+  if (state.saving) return;
+  $('modal').classList.remove('open');
+  state.editing = null;
+  setReadOnly(false, []);
+  setHidden($('modal-raw'), true);
+  const opener = state.opener;
+  state.opener = null;
+  if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+}
+
+function openCreateModal(opener) {
+  if (state.phase !== 'ready') return;
+  state.editing = null;
+  setReadOnly(false, []);
+  $('modal-title').textContent = 'NEW CRON JOB';
+  $('modal-save').textContent = 'Create Job';
+  setHidden($('modal-raw'), true);
+  clearForm();
+  openModal(opener);
+}
+
+function openEditModal(id, opener) {
+  const job = findJob(id);
+  if (!job) return;
+  const info = jobIsSimple(job);
+  state.editing = { id: String(job.id), original: JSON.parse(JSON.stringify(job)), deliveryLocked: !info.deliveryEditable };
+  setReadOnly(!info.simple, info.reasons);
+  $('modal-title').textContent = info.simple ? 'EDIT CRON JOB' : 'CRON JOB';
+  $('modal-save').textContent = 'Save Changes';
+  populateForm(job, info);
+  $('modal-raw-json').textContent = JSON.stringify(job, null, 2);
+  setHidden($('modal-raw'), info.simple);
+  openModal(opener);
+}
+
+// Build what the form says, or return {error}.
+function readForm() {
+  const name = $('f-name').value.trim();
+  const agentId = $('f-agent').value;
+  const sessionTarget = $('f-target').value;
+  const wakeMode = $('f-wake').value;
+  const enabled = $('f-enabled').checked;
+  const message = $('f-message').value.trim();
+  const timeoutRaw = $('f-timeout').value.trim();
+  if (!name) return { error: 'Job name is required', field: 'f-name' };
+  if (!message) return { error: 'Message / prompt is required', field: 'f-message' };
+  let timeoutSeconds = null;
+  if (timeoutRaw) {
+    timeoutSeconds = Number(timeoutRaw);
+    if (!Number.isInteger(timeoutSeconds) || timeoutSeconds < 10) return { error: 'Timeout must be a whole number of at least 10 seconds', field: 'f-timeout' };
+  }
+
+  const schedType = $('f-sched-type').value;
+  let schedule;
+  if (schedType === 'cron') {
+    const expr = $('f-cron-expr').value.trim().replace(/\s+/g, ' ');
+    const fieldCount = expr ? expr.split(' ').length : 0;
+    if (!expr) {
+      if (!$('cron-picker').hidden && !getSelectedDays().length) return { error: 'Select at least one day', field: 'f-cron-time' };
+      return { error: 'Enter a cron expression', field: 'f-cron-expr' };
+    }
+    if (fieldCount < 5 || fieldCount > 6) return { error: 'A cron expression has 5 fields (or 6 with seconds)', field: 'f-cron-expr' };
+    schedule = { kind: 'cron', expr };
+    const tz = cronTz();
+    if (tz) schedule.tz = tz;
+  } else if (schedType === 'every') {
+    const min = Number($('f-every-min').value);
+    if (!Number.isFinite(min) || min < 1) return { error: 'Interval must be at least 1 minute', field: 'f-every-min' };
+    schedule = { kind: 'every', everyMs: Math.round(min * 60000) };
+  } else {
+    const d = $('f-at-date').value;
+    const t = $('f-at-time').value;
+    if (!d || !t) return { error: 'Date and time are required', field: 'f-at-date' };
+    const when = new Date(`${d}T${t}`);
+    if (Number.isNaN(when.getTime())) return { error: 'That date and time are not valid', field: 'f-at-date' };
+    schedule = { kind: 'at', at: when.toISOString() };
+  }
+
+  const isMain = sessionTarget === 'main';
+  const payload = isMain ? { kind: 'systemEvent', text: message } : { kind: 'agentTurn', message };
+  if (!isMain && timeoutSeconds !== null) payload.timeoutSeconds = timeoutSeconds;
+
+  let delivery;
+  const deliveryMode = isMain ? 'none' : $('f-delivery').value;
+  if (deliveryMode === 'announce') {
+    const channel = $('f-del-channel').value;
+    const accountId = $('f-del-account').value;
+    const to = $('f-del-to').value.trim();
+    if (!channel) return { error: 'Select a delivery channel', field: 'f-del-channel' };
+    delivery = { mode: 'announce', channel };
+    if (to) delivery.to = to;
+    if (accountId) delivery.accountId = accountId;
+  } else if (deliveryMode === 'none') {
+    delivery = { mode: 'none' };
+  }
+  return { name, agentId, sessionTarget, wakeMode, enabled, schedule, payload, delivery, timeoutSeconds };
+}
+
+function sameSchedule(a, b) {
+  a = a || {}; b = b || {};
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'cron') return String(a.expr || '').trim().replace(/\s+/g, ' ') === String(b.expr || '').trim().replace(/\s+/g, ' ') && (a.tz || '') === (b.tz || '');
+  if (a.kind === 'every') return Number(a.everyMs) === Number(b.everyMs);
+  if (a.kind === 'at') return new Date(a.at).getTime() === new Date(b.at).getTime();
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function comparableDelivery(delivery) {
+  const value = delivery || { mode: 'none' };
+  const mode = value.mode || 'none';
+  if (mode === 'none') return { mode: 'none' };
+  return { mode, channel: value.channel || '', accountId: value.accountId || '', to: value.to || '' };
+}
+
+// Only the fields the user actually changed; nested objects merge onto the original.
+function buildPatch(original, form) {
+  const patch = {};
+  if (form.name !== (original.name || '')) patch.name = form.name;
+  if ((form.agentId || '') !== (original.agentId || '')) patch.agentId = form.agentId || null;
+  const origTarget = original.sessionTarget || (original.payload && original.payload.kind === 'systemEvent' ? 'main' : 'isolated');
+  if (form.sessionTarget !== origTarget) patch.sessionTarget = form.sessionTarget;
+  const origWake = original.wakeMode === 'next-heartbeat' ? 'next-heartbeat' : 'now';
+  if (form.wakeMode !== origWake) patch.wakeMode = form.wakeMode;
+  if (form.enabled !== (original.enabled !== false)) patch.enabled = form.enabled;
+
+  if (!sameSchedule(form.schedule, original.schedule)) {
+    const schedule = (original.schedule && original.schedule.kind === form.schedule.kind) ? Object.assign({}, original.schedule, form.schedule) : Object.assign({}, form.schedule);
+    if (form.schedule.kind === 'cron' && !form.schedule.tz) delete schedule.tz;
+    patch.schedule = schedule;
+  }
+
+  const op = original.payload || {};
+  if (op.kind !== form.payload.kind) {
+    patch.payload = form.payload;
+  } else {
+    const changes = {};
+    if (op.kind === 'systemEvent' && (op.text || '') !== form.payload.text) changes.text = form.payload.text;
+    if (op.kind === 'agentTurn') {
+      if ((op.message || '') !== form.payload.message) changes.message = form.payload.message;
+      const before = op.timeoutSeconds === undefined || op.timeoutSeconds === null ? null : Number(op.timeoutSeconds);
+      if (before !== form.timeoutSeconds) changes.timeoutSeconds = form.timeoutSeconds;
+    }
+    if (Object.keys(changes).length) patch.payload = Object.assign({ kind: op.kind }, changes);
+  }
+
+  if (form.delivery && !(state.editing && state.editing.deliveryLocked)) {
+    if (JSON.stringify(comparableDelivery(original.delivery)) !== JSON.stringify(comparableDelivery(form.delivery))) {
+      patch.delivery = form.delivery.mode === 'none' ? { mode: 'none' } : Object.assign({}, original.delivery && original.delivery.mode === form.delivery.mode ? original.delivery : {}, form.delivery);
+      if (form.delivery.mode === 'announce') {
+        if (!form.delivery.to) delete patch.delivery.to;
+        if (!form.delivery.accountId) delete patch.delivery.accountId;
+      }
+    }
+  }
+  return patch;
+}
+
+function cronJobFromResponse(response) {
+  const payload = response && response.payload !== undefined ? response.payload : response;
+  if (!payload) return null;
+  if (payload.job) return payload.job;
+  if (payload.id && payload.schedule) return payload;
+  return null;
+}
+
+function verifySaved(saved, expected) {
+  if (!saved) throw new Error('The gateway did not return the saved job');
+  const missing = [];
+  const same = (a, b) => (a || '') === (b || '');
+  if ('name' in expected && saved.name !== expected.name) missing.push('job name');
+  if ('agentId' in expected && !same(saved.agentId, expected.agentId)) missing.push('agent');
+  if ('sessionTarget' in expected && saved.sessionTarget !== expected.sessionTarget) missing.push('session target');
+  if ('wakeMode' in expected && saved.wakeMode !== expected.wakeMode) missing.push('wake mode');
+  if ('enabled' in expected && (saved.enabled !== false) !== expected.enabled) missing.push('enabled state');
+  if (expected.schedule && !sameSchedule(Object.assign({}, expected.schedule), saved.schedule)) missing.push('schedule');
+  if (expected.payload) {
+    const a = saved.payload || {}; const e = expected.payload;
+    if (a.kind !== e.kind) missing.push('payload type');
+    if ('text' in e && a.text !== e.text) missing.push('message');
+    if ('message' in e && a.message !== e.message) missing.push('message');
+    if ('timeoutSeconds' in e && e.timeoutSeconds !== null && Number(a.timeoutSeconds) !== Number(e.timeoutSeconds)) missing.push('timeout');
+  }
+  if (expected.delivery && JSON.stringify(comparableDelivery(saved.delivery)) !== JSON.stringify(comparableDelivery(expected.delivery))) missing.push('delivery');
+  if (missing.length) throw new Error('Saved, but the gateway did not keep: ' + missing.join(', '));
+}
+
+async function saveJob() {
+  if (state.saving || state.readOnly) return;
+  const form = readForm();
+  if (form.error) {
+    toast(form.error, 'error');
+    const field = $(form.field);
+    if (field && !field.closest('[hidden]')) field.focus();
+    return;
+  }
+  const editing = state.editing;
+  let method; let params; let expected;
+  if (editing) {
+    const patch = buildPatch(editing.original, form);
+    if (!Object.keys(patch).length) { toast('Nothing changed', 'success'); closeModal(); return; }
+    method = 'cron.update';
+    params = { id: editing.id, patch };
+    expected = patch;
+  } else {
+    const job = { name: form.name, schedule: form.schedule, payload: form.payload, sessionTarget: form.sessionTarget, wakeMode: form.wakeMode, enabled: form.enabled };
+    if (form.delivery) job.delivery = form.delivery;
+    if (form.agentId) job.agentId = form.agentId;
+    method = 'cron.add';
+    params = job;
+    expected = job;
+  }
+
+  const btn = $('modal-save');
+  state.saving = true;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  try {
+    const response = await rpc(method, params);
+    const responseJob = cronJobFromResponse(response);
+    const persistedId = editing ? editing.id : (responseJob && responseJob.id);
+    if (!persistedId) throw new Error('The gateway saved the job but did not return its ID');
+    const persisted = cronJobFromResponse(await rpc('cron.get', { id: persistedId }));
+    verifySaved(persisted, expected);
+    toast(editing ? 'Job updated' : 'Job created', 'success');
+    state.saving = false;
+    closeModal();
+    await loadJobs({ quiet: true });
+  } catch (e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    state.saving = false;
+    btn.disabled = false;
+    btn.textContent = editing ? 'Save Changes' : 'Create Job';
+  }
+}
+
+// ---------- wiring ----------
+$('btn-new-job').addEventListener('click', (e) => openCreateModal(e.currentTarget));
+$('btn-refresh').addEventListener('click', () => (state.phase === 'ready' ? loadJobs() : boot()));
+$('filter-agent').addEventListener('change', renderJobs);
+$('filter-disabled').addEventListener('change', renderJobs);
+$('f-target').addEventListener('change', toggleTargetFields);
+$('f-sched-type').addEventListener('change', () => { toggleScheduleFields(); if ($('f-sched-type').value === 'cron' && !$('f-cron-expr').value) syncExprFromPicker(); });
+$('f-delivery').addEventListener('change', toggleDeliveryFields);
+$('f-del-channel').addEventListener('change', (e) => populateDeliveryAccounts(e.target.value));
+$('f-cron-time').addEventListener('input', syncExprFromPicker);
+document.querySelectorAll('.day-cb').forEach((cb) => cb.addEventListener('change', syncExprFromPicker));
+document.querySelectorAll('.day-preset').forEach((b) => b.addEventListener('click', () => setDays(b.dataset.days)));
+$('f-cron-expr').addEventListener('input', syncPickerFromExpr);
+$('modal-cancel').addEventListener('click', closeModal);
+$('modal-save').addEventListener('click', saveJob);
+$('modal').addEventListener('mousedown', (e) => { if (e.target === $('modal')) closeModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('modal').classList.contains('open')) { e.preventDefault(); closeModal(); return; }
+  if (e.key === 'Tab' && $('modal').classList.contains('open')) {
+    const focusables = Array.from($('modal').querySelectorAll('button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'))
+      .filter((el) => !el.disabled && !el.closest('[hidden]') && el.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0]; const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
+
+fetch('/vo-config', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
+  if (d && d.office && d.office.name) document.title = 'Cron Manager - ' + d.office.name;
+}).catch(() => {});
+
+window.VOCron = { boot, parseSimpleCron, buildPatch, readForm, formatSchedule, state };
+boot();
+})();
+</script>
+<script src="ui-standalone.js?v=20260721-2"></script>
+<script src="ui-themes.js?v=20260722-5"></script>
+</body>
+</html>

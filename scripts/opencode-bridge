@@ -1,0 +1,3 @@
+#!/bin/sh
+# Entrypoint used as VO_OPENCODE_BIN. See opencode-server-bridge.py.
+exec python3 "$(dirname "$0")/opencode-server-bridge.py" "$@"

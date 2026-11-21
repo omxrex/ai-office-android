@@ -1,0 +1,207 @@
+services:
+  virtual-office:
+    image: ${VO_IMAGE:-ghcr.io/eliautobot/my-virtual-office:latest}
+    container_name: virtual-office
+    # Small init process: forwards stop signals and reaps agent CLI child processes.
+    init: true
+    # Optional: run as your host user so files written into ~/.openclaw, ~/.codex and
+    # ~/.hermes stay yours (set PUID/PGID in .env, e.g. from `id -u` / `id -g`).
+    # Since v0.10 the office no longer opens /data to everyone (no chmod 777) and keeps
+    # its secret files private (0600, or 0640 for a file its group could read) without
+    # changing their owner. With `user:` the data volume must belong to that user; give
+    # an existing one to it once, with the office stopped and your PUID:PGID
+    # (`docker volume ls | grep vo-data` shows the volume name):
+    #   docker run --rm -v <project>_vo-data:/data alpine chown -R 1000:1000 /data
+    # Without `user:` the office runs as root, as before. See docs/UPDATING.md.
+    # user: "${PUID:-1000}:${PGID:-1000}"
+    # OpenClaw (v0.11): on this bridge network the office reaches the gateway at
+    # ws://host.docker.internal:18789 and pairs as a device: after the first start, open
+    # More tools > Providers > OpenClaw and run the `openclaw devices approve <id>` it shows
+    # on the OpenClaw computer, once. The gateway must listen beyond 127.0.0.1 for that
+    # (OpenClaw's gateway.bind = lan). Alternative on Linux: host networking, no pairing:
+    #   network_mode: host   (and remove the ports:, networks: and extra_hosts: lines;
+    #                         set VO_GATEWAY_URL=ws://127.0.0.1:18789 in .env)
+    ports:
+      - "${VO_PORT:-8090}:${VO_PORT:-8090}"
+      # Old raw gateway tunnel: nothing listens unless VO_OPENCLAW_BROWSER_TRANSPORT=direct.
+      - "${VO_WS_PORT:-8091}:${VO_WS_PORT:-8091}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Makes host.docker.internal work on Linux too
+    volumes:
+      # OpenClaw home: the Skills library, the gateway token on the first start, and the
+      # optional clean-up of settings 0.7.x wrote into openclaw.json (only after you confirm).
+      # Agents, models and settings come from the gateway itself since v0.11.
+      - ${VO_OPENCLAW_PATH:-~/.openclaw}:/openclaw
+      # Persistent office data (layout, presence snapshots, config)
+      - vo-data:/data
+      # Hermes runtime traffic uses its authenticated API. This separate,
+      # narrowly scoped mount is only for declared profile resources/skills.
+      - ${VO_HERMES_HOST_DATA:-~/.hermes}:${VO_HERMES_RESOURCE_ROOT:-/data/hermes}:${VO_HERMES_RESOURCE_VOLUME_MODE:-rw}
+    environment:
+      - VO_OPENCLAW_PATH=/openclaw
+      # Optional host/Gateway namespace for the same mounted directory. The
+      # app can infer it from openclaw.json; set this only when inference is
+      # unavailable or your Gateway uses a nonstandard workspace root.
+      - VO_OPENCLAW_GATEWAY_PATH=${VO_OPENCLAW_GATEWAY_PATH:-}
+      - VO_STATUS_DIR=/data
+      # v0.11: OpenClaw and Hermes run on the integration copied from My Virtual World (Node is
+      # in the image). 0 keeps 0.10's Python path for this release (legacy).
+      - VO_PROVIDER_LAYER=${VO_PROVIDER_LAYER:-1}
+      - VO_GATEWAY_URL=${VO_GATEWAY_URL:-ws://host.docker.internal:18789}
+      - VO_GATEWAY_HTTP=${VO_GATEWAY_HTTP:-http://host.docker.internal:18789}
+      - VO_PORT=${VO_PORT:-8090}
+      - VO_WS_PORT=${VO_WS_PORT:-8091}
+      - VO_OFFICE_NAME=${VO_OFFICE_NAME:-Virtual Office}
+      # Access: optional passcode is set in Settings > Security. Extra host names the
+      # office answers to (for a reverse proxy domain), comma separated.
+      - VO_ALLOWED_HOSTS=${VO_ALLOWED_HOSTS:-}
+      # Optional fixed token for agents calling the API from another machine.
+      - VO_AGENT_API_TOKEN=${VO_AGENT_API_TOKEN:-}
+      # Linux bridge network only: the host's own requests come from the bridge
+      # gateway (often 172.17.0.1); list it so local agents skip the passcode.
+      - VO_TRUSTED_CLIENT_IPS=${VO_TRUSTED_CLIENT_IPS:-}
+      - VO_WEATHER_LOCATION=${VO_WEATHER_LOCATION:-}
+      # Agent PC indexes provider-owned files without copying workspaces.
+      # External local folders must also be bind-mounted by a Compose override;
+      # remote provider computers use the authenticated Agent Files Connector.
+      - VO_AGENT_PC_RECENT_LIMIT=${VO_AGENT_PC_RECENT_LIMIT:-100}
+      - VO_AGENT_PC_PATH_MAPPINGS_JSON=${VO_AGENT_PC_PATH_MAPPINGS_JSON:-[]}
+      - VO_AGENT_PC_ALLOW_INSECURE_CONNECTORS=${VO_AGENT_PC_ALLOW_INSECURE_CONNECTORS:-false}
+      # Hermes runs outside this container. Add one authenticated native API
+      # connection per Hermes profile, or configure connections in Settings.
+      - VO_HERMES_ENABLED=${VO_HERMES_ENABLED:-true}
+      - VO_HERMES_CONNECTIONS_JSON=${VO_HERMES_CONNECTIONS_JSON:-[]}
+      - VO_HERMES_LOCAL_PROFILES_ENABLED=${VO_HERMES_LOCAL_PROFILES_ENABLED:-false}
+      - VO_HERMES_HOME=${VO_HERMES_HOME:-/data/hermes-home}
+      - VO_HERMES_RESOURCE_ROOT=${VO_HERMES_RESOURCE_ROOT:-/data/hermes}
+      - VO_HERMES_RESOURCE_ACCESS=${VO_HERMES_RESOURCE_ACCESS:-read-write}
+      - VO_HERMES_CONTEXT_MAX_MESSAGES=${VO_HERMES_CONTEXT_MAX_MESSAGES:-120}
+      - VO_HERMES_CONTEXT_MAX_CHARS=${VO_HERMES_CONTEXT_MAX_CHARS:-120000}
+      - VO_HERMES_CONTEXT_MAX_MESSAGE_CHARS=${VO_HERMES_CONTEXT_MAX_MESSAGE_CHARS:-32000}
+      - VO_HERMES_BIN=${VO_HERMES_BIN:-hermes}
+      # Optional native Codex support. Install codex in the image/container PATH
+      # or set VO_CODEX_BIN to an absolute path available inside the container.
+      - VO_CODEX_ENABLED=${VO_CODEX_ENABLED:-true}
+      - CODEX_HOME=${VO_CODEX_HOME:-/data/codex-home}
+      - VO_CODEX_HOME=${VO_CODEX_HOME:-/data/codex-home}
+      - VO_CODEX_BIN=${VO_CODEX_BIN:-codex}
+      - VO_CODEX_WORKSPACE_ROOT=${VO_CODEX_WORKSPACE_ROOT:-/data/codex-agents}
+      - VO_CODEX_MAIN_WORKSPACE=${VO_CODEX_MAIN_WORKSPACE:-/data/codex-main}
+      - VO_CODEX_PREFER_APP_SERVER=${VO_CODEX_PREFER_APP_SERVER:-1}
+      - VO_CODEX_SANDBOX=${VO_CODEX_SANDBOX:-danger-full-access}
+      - VO_CODEX_APPROVAL_POLICY=${VO_CODEX_APPROVAL_POLICY:-never}
+      - VO_CODEX_INCLUDE_MAIN=${VO_CODEX_INCLUDE_MAIN:-1}
+      - VO_CODEX_INCLUDE_NATIVE_AGENTS=${VO_CODEX_INCLUDE_NATIVE_AGENTS:-1}
+      - VO_CODEX_REGISTER_NATIVE_AGENTS=${VO_CODEX_REGISTER_NATIVE_AGENTS:-1}
+      # Optional native Claude Code support. Install claude in the image/container PATH
+      # or set VO_CLAUDE_CODE_BIN to an absolute path available inside the container.
+      - VO_CLAUDE_CODE_ENABLED=${VO_CLAUDE_CODE_ENABLED:-true}
+      - CLAUDE_CONFIG_DIR=${VO_CLAUDE_CODE_HOME:-/data/claude-code-home}
+      - VO_CLAUDE_CODE_HOME=${VO_CLAUDE_CODE_HOME:-/data/claude-code-home}
+      - VO_CLAUDE_CODE_BIN=${VO_CLAUDE_CODE_BIN:-claude}
+      - VO_CLAUDE_CODE_WORKSPACE_ROOT=${VO_CLAUDE_CODE_WORKSPACE_ROOT:-/data/claude-code-agents}
+      - VO_CLAUDE_CODE_MAIN_WORKSPACE=${VO_CLAUDE_CODE_MAIN_WORKSPACE:-/data/claude-code-main}
+      - VO_CLAUDE_CODE_PERMISSION_MODE=${VO_CLAUDE_CODE_PERMISSION_MODE:-acceptEdits}
+      - VO_CLAUDE_CODE_MODEL=${VO_CLAUDE_CODE_MODEL:-}
+      - VO_CLAUDE_CODE_INCLUDE_MAIN=${VO_CLAUDE_CODE_INCLUDE_MAIN:-1}
+      - VO_CLAUDE_CODE_INCLUDE_NATIVE_AGENTS=${VO_CLAUDE_CODE_INCLUDE_NATIVE_AGENTS:-1}
+      - VO_CLAUDE_CODE_REGISTER_NATIVE_AGENTS=${VO_CLAUDE_CODE_REGISTER_NATIVE_AGENTS:-1}
+      # Optional OpenCode support. Mount or install the native CLI, then enable it.
+      - VO_OPENCODE_ENABLED=${VO_OPENCODE_ENABLED:-false}
+      - VO_OPENCODE_BIN=${VO_OPENCODE_BIN:-opencode}
+      - VO_OPENCODE_CONFIG_DIR=${VO_OPENCODE_CONFIG_DIR:-/data/opencode-config}
+      - VO_OPENCODE_WORKSPACE_ROOT=${VO_OPENCODE_WORKSPACE_ROOT:-/data/opencode-agents}
+      - VO_OPENCODE_MAIN_WORKSPACE=${VO_OPENCODE_MAIN_WORKSPACE:-/data/opencode-main}
+      - VO_OPENCODE_INCLUDE_MAIN=${VO_OPENCODE_INCLUDE_MAIN:-1}
+      - VO_OPENCODE_INCLUDE_AGENTS=${VO_OPENCODE_INCLUDE_AGENTS:-1}
+      - VO_OPENCODE_REGISTER_AGENTS=${VO_OPENCODE_REGISTER_AGENTS:-1}
+      # Optional Antigravity support. Authentication remains owned by its native CLI.
+      - VO_ANTIGRAVITY_ENABLED=${VO_ANTIGRAVITY_ENABLED:-false}
+      - VO_ANTIGRAVITY_BIN=${VO_ANTIGRAVITY_BIN:-agy}
+      - VO_ANTIGRAVITY_HOME=${VO_ANTIGRAVITY_HOME:-/data/antigravity-config}
+      - VO_ANTIGRAVITY_WORKSPACE_ROOT=${VO_ANTIGRAVITY_WORKSPACE_ROOT:-/data/antigravity-agents}
+      - VO_ANTIGRAVITY_PRINT_TIMEOUT=${VO_ANTIGRAVITY_PRINT_TIMEOUT:-5m}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - default
+      - hermes-internal
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${VO_PORT:-8090}/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Optional dedicated Hermes runtime. Enable with `--profile hermes` only
+  # after setting a strong VO_HERMES_API_KEY and configuring Virtual Office's
+  # gateway URL as http://hermes:8642. Port 8642 is never published to the host.
+  hermes:
+    profiles: ["hermes"]
+    image: ${VO_HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}
+    container_name: virtual-office-hermes
+    volumes:
+      - ${VO_HERMES_HOST_DATA:-~/.hermes}:/opt/data
+    environment:
+      - HERMES_UID=${VO_HERMES_UID:-10000}
+      - HERMES_GID=${VO_HERMES_GID:-10000}
+      - API_SERVER_ENABLED=true
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_KEY=${VO_HERMES_API_KEY:-}
+    expose:
+      - "8642"
+    command: ["gateway", "run"]
+    restart: unless-stopped
+    networks:
+      - hermes-internal
+
+  # Optional: Agent Browser (uncomment to enable)
+  # Gives AI agents a real Google Chrome browser they can control via CDP.
+  # You can watch them browse live through the Virtual Office browser panel.
+  # Includes full Chrome Sync, "Sign in to Chrome", and Google password manager.
+  #
+  # After first start, run the post-boot script to install Chrome:
+  #   docker exec --user root agent-browser bash /tmp/post-boot.sh
+  #   docker exec agent-browser pkill -f chromium-orig
+  #   docker exec -e DISPLAY=:10 -d agent-browser /usr/bin/chromium
+  #
+  # On subsequent restarts, Chrome persists unless the container is recreated.
+  # The kasm-browser-config/ folder contains all config files.
+  #
+  # agent-browser:
+  #   image: kasmweb/chromium:1.17.0
+  #   container_name: agent-browser
+  #   entrypoint: /dockerstartup/kasm_default_profile.sh
+  #   command: ["/tmp/override-startup.sh", "/dockerstartup/kasm_startup.sh", "--wait"]
+  #   shm_size: 1g   # Prevents Chromium crashes from insufficient shared memory
+  #   ports:
+  #     - "6901:6901"   # KasmVNC viewer
+  #     - "9222:9222"   # CDP endpoint
+  #   environment:
+  #     - VNC_PW=${BROWSER_VNC_PASSWORD:-changeme}
+  #     - VNC_RESOLUTION=1600x900
+  #     - KASMVNC_AUTO_RECOVER=true
+  #   volumes:
+  #     - browser-data:/home/kasm-user/.config/chromium
+  #     - ./kasm-browser-config/chromium-browser:/usr/bin/chromium
+  #     - ./kasm-browser-config/override-startup.sh:/tmp/override-startup.sh
+  #     - ./kasm-browser-config/start-cdp-proxy.sh:/tmp/start-cdp-proxy.sh
+  #     - ./kasm-browser-config/post-boot.sh:/tmp/post-boot.sh
+  #     - ./kasm-browser-config/install-chrome.sh:/tmp/install-chrome.sh
+  #     - ./kasm-browser-config/browser-supervisor.sh:/tmp/browser-supervisor.sh
+  #   restart: unless-stopped
+  #   # Configure in Virtual Office Settings → Agent Browser:
+  #   #   CDP URL: http://host.docker.internal:9222
+  #   #   Viewer URL: https://localhost:6901
+
+volumes:
+  vo-data:
+  # browser-data:  # Uncomment if using agent-browser
+
+networks:
+  hermes-internal:
+    internal: true

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Android/Termux launcher for the REAL OpenCode CLI.
+# The upstream opencode binary is glibc-linked; Termux uses a musl dynamic
+# linker. AntiGem/Termux ships a glibc loader under $PREFIX/glibc/lib, so we
+# exec the unmodified binary through it. No API is emulated here.
+set -eu
+REAL_BIN="${VO_OPENCODE_REAL_BIN:-${OPENCODE_REAL_BIN:-$HOME/.opencode/bin/opencode}}"
+LOADER="${VO_GLIBC_LOADER:-$PREFIX/glibc/lib/ld-linux-aarch64.so.1}"
+LIBDIR="${VO_GLIBC_LIBDIR:-$PREFIX/glibc/lib}"
+if [ -n "${VO_OPENCODE_BYPASS_WRAPPER:-}" ]; then
+    exec "$REAL_BIN" "$@"
+fi
+if [ -x "$LOADER" ] && [ -f "$REAL_BIN" ]; then
+    exec "$LOADER" --library-path "$LIBDIR" "$REAL_BIN" "$@"
+fi
+if command -v opencode >/dev/null 2>&1; then
+    exec opencode "$@"
+fi
+echo "opencode: real CLI not found (looked at $REAL_BIN and in PATH)" >&2
+exit 127

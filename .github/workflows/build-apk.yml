@@ -1,0 +1,257 @@
+name: Build AI Office APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Configure Android SDK
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKMGR=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)
+          yes | "$SDKMGR" --licenses > /dev/null 2>&1 || true
+          "$SDKMGR" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Create minimal WebView Android project
+        run: |
+          mkdir -p android/app/src/main/java/com/omxrex/aioffice
+          mkdir -p android/app/src/main/assets/public
+          cp android-app/index.html android/app/src/main/assets/public/index.html
+
+          cat > android/settings.gradle <<'EOF'
+          pluginManagement {
+            repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+            repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "AI Office"
+          include ':app'
+          EOF
+
+          cat > android/build.gradle <<'EOF'
+          plugins {
+            id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > android/app/build.gradle <<'EOF'
+          plugins {
+            id 'com.android.application'
+          }
+          android {
+            namespace 'com.omxrex.aioffice'
+            compileSdk 35
+            defaultConfig {
+              applicationId 'com.omxrex.aioffice'
+              minSdk 23
+              targetSdk 35
+              versionCode 1
+              versionName '1.0'
+            }
+            buildTypes {
+              debug { applicationIdSuffix '.debug' }
+              release { minifyEnabled false }
+            }
+          }
+          EOF
+
+          cat > android/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m
+          android.useAndroidX=false
+          android.nonTransitiveRClass=true
+          EOF
+
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application
+              android:allowBackup="true"
+              android:label="AI Office"
+              android:usesCleartextTraffic="true"
+              android:theme="@android:style/Theme.Material.NoActionBar">
+              <activity
+                android:name=".MainActivity"
+                android:exported="true"
+                android:configChanges="orientation|screenSize|keyboardHidden">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+          cat > android/app/src/main/java/com/omxrex/aioffice/MainActivity.java <<'EOF'
+          package com.omxrex.aioffice;
+
+          import android.app.Activity;
+          import android.content.ClipData;
+          import android.content.ClipboardManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Toast;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+          import java.util.concurrent.Executors;
+
+          public class MainActivity extends Activity {
+            private static final String OFFICE_URL = "http://127.0.0.1:8090/mobile";
+            private static final String HEALTH_URL = "http://127.0.0.1:8090/health";
+            private WebView web;
+            private final Handler main = new Handler(Looper.getMainLooper());
+
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              web = new WebView(this);
+              setContentView(web);
+              WebSettings settings = web.getSettings();
+              settings.setJavaScriptEnabled(true);
+              settings.setDomStorageEnabled(true);
+              settings.setAllowFileAccess(true);
+              settings.setLoadWithOverviewMode(true);
+              settings.setUseWideViewPort(true);
+              settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+              web.setWebViewClient(new WebViewClient() {
+                @SuppressWarnings("deprecation")
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                  return false;
+                }
+              });
+              web.addJavascriptInterface(new JsBridge(), "AndroidOffice");
+              checkAndLoad();
+            }
+
+            private boolean serverUp() {
+              HttpURLConnection connection = null;
+              try {
+                connection = (HttpURLConnection) new URL(HEALTH_URL).openConnection();
+                connection.setConnectTimeout(1500);
+                connection.setReadTimeout(1500);
+                connection.setRequestMethod("GET");
+                return connection.getResponseCode() == 200;
+              } catch (Exception ignored) {
+                return false;
+              } finally {
+                if (connection != null) connection.disconnect();
+              }
+            }
+
+            private void checkAndLoad() {
+              Executors.newSingleThreadExecutor().execute(() -> {
+                final boolean up = serverUp();
+                main.post(() -> {
+                  if (up) {
+                    web.loadUrl(OFFICE_URL);
+                  } else {
+                    web.loadUrl("file:///android_asset/public/index.html");
+                    web.evaluateJavascript("if(window.onServerStatus)window.onServerStatus(false);", null);
+                  }
+                });
+              });
+            }
+
+            public class JsBridge {
+              @JavascriptInterface
+              public void checkServer() {
+                Executors.newSingleThreadExecutor().execute(() -> {
+                  final boolean up = serverUp();
+                  main.post(() -> web.evaluateJavascript(
+                      "if(window.onServerStatus)window.onServerStatus(" + up + ");", null));
+                });
+              }
+
+              @JavascriptInterface
+              public void openOffice() {
+                main.post(() -> web.loadUrl(OFFICE_URL));
+              }
+
+              @JavascriptInterface
+              public void openTermux() {
+                main.post(() -> {
+                  Intent intent = getPackageManager().getLaunchIntentForPackage("com.termux");
+                  if (intent != null) startActivity(intent);
+                  else Toast.makeText(MainActivity.this, "Install Termux from F-Droid first", Toast.LENGTH_LONG).show();
+                });
+              }
+
+              @JavascriptInterface
+              public void copyText(String text) {
+                main.post(() -> {
+                  ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                  if (clipboard != null) {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("AI Office setup", text));
+                    Toast.makeText(MainActivity.this, "Commands copied", Toast.LENGTH_SHORT).show();
+                  }
+                });
+              }
+            }
+
+            @Override
+            public void onBackPressed() {
+              if (web.canGoBack()) web.goBack();
+              else super.onBackPressed();
+            }
+          }
+          EOF
+
+      - name: Download Gradle and build debug APK
+        run: |
+          cd android
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.11.1-bin.zip -o gradle.zip
+          unzip -q gradle.zip
+          ./gradle-8.11.1/bin/gradle wrapper --gradle-version 8.11.1
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ai-office-android.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-office-apk
+          path: ai-office-android.apk
+          if-no-files-found: error
+
+      - name: Publish APK on latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          body: |
+            AI Office Android client (WebView) — connects to the local office server on 127.0.0.1:8090.
+            Install the APK, install Termux + OpenCode, run the setup commands shown in the app, then open AI Office.
+          files: ai-office-android.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
