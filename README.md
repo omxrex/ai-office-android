@@ -25,7 +25,7 @@ A mobile-first fork/setup of [My Virtual Office v0.12.0](https://github.com/elia
 
 ## Install the APK
 
-1. Download `ai-office-android.apk` from the **[Latest build release](../../releases/tag/latest)**.
+1. Download `ai-office-android.apk` from the **[Latest build release](https://github.com/omxrex/ai-office-android/releases/tag/latest)**.
 2. Allow “Install unknown apps” for your browser/file manager and install it.
 3. Open **AI Office**. If the server is not running you will see a setup screen with copyable commands.
 4. Install [Termux from F-Droid](https://f-droid.org/packages/com.termux/), then run the commands shown in the app.
